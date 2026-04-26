@@ -117,6 +117,25 @@ export async function POST(request: Request) {
       }
     }
 
+    // Sync shipping address to user's saved addresses (skip guests)
+    if (userId && userId !== "guest" && shippingAddress.line1) {
+      const { data: existing } = await supabase
+        .from("addresses")
+        .select("id")
+        .eq("user_id", userId)
+        .eq("line1", shippingAddress.line1)
+        .eq("postal_code", shippingAddress.postal_code)
+        .limit(1);
+
+      if (!existing || existing.length === 0) {
+        await supabase.from("addresses").insert({
+          user_id: userId,
+          ...shippingAddress,
+          is_default: false,
+        });
+      }
+    }
+
     return NextResponse.json({ order });
   } catch (error) {
     console.error("Confirm order error:", error);

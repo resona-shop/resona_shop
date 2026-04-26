@@ -116,8 +116,92 @@ export async function POST(request: Request) {
           }
         }
       }
+
+      // Sync shipping address to user's saved addresses (skip guests)
+      if (userId && userId !== "guest" && shippingAddress.line1) {
+        const { data: existing } = await supabase
+          .from("addresses")
+          .select("id")
+          .eq("user_id", userId)
+          .eq("line1", shippingAddress.line1)
+          .eq("postal_code", shippingAddress.postal_code)
+          .limit(1);
+
+        if (!existing || existing.length === 0) {
+          await supabase.from("addresses").insert({
+            user_id: userId,
+            ...shippingAddress,
+            is_default: false,
+          });
+        }
+      }
     } catch (err) {
       console.error("Webhook processing error:", err);
+    }
+  }
+
+  if (event.type === "charge.refunded") {
+    const charge = event.data.object as Stripe.Charge;
+
+    try {
+      const supabase = await createServiceClient();
+
+      const paymentIntentId =
+        typeof charge.payment_intent === "string"
+          ? charge.payment_intent
+          : null;
+
+      if (!paymentIntentId) {
+        return NextResponse.json({ received: true });
+      }
+
+      const { data: order } = await supabase
+        .from("orders")
+        .select("id, status")
+        .eq("stripe_payment_intent_id", paymentIntentId)
+        .single();
+
+      if (!order || order.status === "refunded") {
+        return NextResponse.json({ received: true });
+      }
+
+      const isFullRefund = charge.amount_refunded === charge.amount;
+
+      await supabase
+        .from("orders")
+        .update({ status: isFullRefund ? "refunded" : "partially_refunded" })
+        .eq("id", order.id);
+
+      // Restore stock on full refund
+      if (isFullRefund) {
+        const { data: items } = await supabase
+          .from("order_items")
+          .select("variant_id, quantity")
+          .eq("order_id", order.id);
+
+        if (items) {
+          for (const item of items) {
+            if (item.variant_id) {
+              const { data: variant } = await supabase
+                .from("product_variants")
+                .select("stock_quantity")
+                .eq("id", item.variant_id)
+                .single();
+
+              if (variant) {
+                await supabase
+                  .from("product_variants")
+                  .update({
+                    stock_quantity: variant.stock_quantity + item.quantity,
+                  })
+                  .eq("id", item.variant_id);
+              }
+            }
+          }
+        }
+      }
+    } catch (err) {
+      console.error("Refund webhook error:", err);
     }
   }
 
