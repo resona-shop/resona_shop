@@ -21,6 +21,24 @@ export async function getUserOrders() {
   return (data || []) as Order[];
 }
 
+export async function getUserOrderById(id: string) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) return null;
+
+  const { data } = await supabase
+    .from("orders")
+    .select("*, items:order_items(*)")
+    .eq("id", id)
+    .eq("user_id", user.id)
+    .single();
+
+  return (data as Order) || null;
+}
+
 export async function getUserAddresses() {
   const supabase = await createClient();
   const {

@@ -193,6 +193,14 @@ const dict = {
   "account.refundSuccess": { en: "Refund requested successfully", vi: "Yêu cầu hoàn tiền thành công" },
   "account.refundError": { en: "Failed to request refund", vi: "Yêu cầu hoàn tiền thất bại" },
   "account.refunding": { en: "Processing...", vi: "Đang xử lý..." },
+  "account.orderDetail": { en: "Order Detail", vi: "Chi Tiết Đơn Hàng" },
+  "account.backToOrders": { en: "Back to Orders", vi: "Quay Lại Đơn Hàng" },
+  "account.shippingAddress": { en: "Shipping Address", vi: "Địa Chỉ Giao Hàng" },
+  "account.orderItems": { en: "Items", vi: "Sản Phẩm" },
+  "account.subtotal": { en: "Subtotal", vi: "Tạm Tính" },
+  "account.shipping": { en: "Shipping", vi: "Phí Vận Chuyển" },
+  "account.tax": { en: "Tax", vi: "Thuế" },
+  "account.viewOrder": { en: "View Details", vi: "Xem Chi Tiết" },
 
   // Footer
   "footer.shop": { en: "Shop", vi: "Mua Sắm" },
