@@ -11,13 +11,14 @@ export async function POST(request: Request) {
 
     const supabase = await createClient();
 
+    // Check if order already confirmed
     const { data: existing } = await supabase
       .from("orders")
-      .select("id, order_number")
+      .select("id, order_number, status")
       .eq("stripe_checkout_session_id", session_id)
       .single();
 
-    if (existing) {
+    if (existing && existing.status !== "pending") {
       return NextResponse.json({ order: existing });
     }
 
@@ -28,19 +29,10 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Payment not completed" }, { status: 400 });
     }
 
-    const userId = session.metadata?.user_id;
-    const cartItemsJson = session.metadata?.cart_items;
-
-    interface CartItem {
-      product_id: string;
-      variant_id: string;
-      name: string;
-      variant_label?: string;
-      quantity: number;
-      unit_price: number;
+    const orderId = session.metadata?.order_id;
+    if (!orderId) {
+      return NextResponse.json({ error: "No order found" }, { status: 400 });
     }
-
-    const cartItems: CartItem[] = cartItemsJson ? JSON.parse(cartItemsJson) : [];
 
     const shipping = session.collected_information?.shipping_details;
     const shippingAddress = {
@@ -58,10 +50,10 @@ export async function POST(request: Request) {
     const shippingCost = (session.total_details?.amount_shipping || 0) / 100;
     const tax = (session.total_details?.amount_tax || 0) / 100;
 
+    // Update pending order to confirmed
     const { data: order, error: orderError } = await supabase
       .from("orders")
-      .insert({
-        user_id: userId && userId !== "guest" ? userId : null,
+      .update({
         status: "confirmed",
         subtotal,
         shipping_cost: shippingCost,
@@ -69,35 +61,28 @@ export async function POST(request: Request) {
         total,
         currency: session.currency || "usd",
         shipping_address: shippingAddress,
-        stripe_checkout_session_id: session.id,
         stripe_payment_intent_id:
           typeof session.payment_intent === "string"
             ? session.payment_intent
             : null,
       })
-      .select("id, order_number")
+      .eq("id", orderId)
+      .select("id, order_number, user_id")
       .single();
 
     if (orderError) {
-      console.error("Order creation error:", orderError);
-      return NextResponse.json({ error: "Failed to create order" }, { status: 500 });
+      console.error("Order update error:", orderError);
+      return NextResponse.json({ error: "Failed to confirm order" }, { status: 500 });
     }
 
-    if (order && cartItems.length > 0) {
-      const orderItems = cartItems.map((item) => ({
-        order_id: order.id,
-        product_id: item.product_id,
-        variant_id: item.variant_id,
-        product_name: item.name,
-        variant_label: item.variant_label || null,
-        quantity: item.quantity,
-        unit_price: item.unit_price,
-        total: item.unit_price * item.quantity,
-      }));
+    // Deduct stock
+    const { data: items } = await supabase
+      .from("order_items")
+      .select("variant_id, quantity")
+      .eq("order_id", orderId);
 
-      await supabase.from("order_items").insert(orderItems);
-
-      for (const item of cartItems) {
+    if (items) {
+      for (const item of items) {
         if (item.variant_id) {
           const { data: variant } = await supabase
             .from("product_variants")
@@ -117,19 +102,19 @@ export async function POST(request: Request) {
       }
     }
 
-    // Sync shipping address to user's saved addresses (skip guests)
-    if (userId && userId !== "guest" && shippingAddress.line1) {
-      const { data: existing } = await supabase
+    // Sync shipping address to user's saved addresses
+    if (order?.user_id && shippingAddress.line1) {
+      const { data: existingAddr } = await supabase
         .from("addresses")
         .select("id")
-        .eq("user_id", userId)
+        .eq("user_id", order.user_id)
         .eq("line1", shippingAddress.line1)
         .eq("postal_code", shippingAddress.postal_code)
         .limit(1);
 
-      if (!existing || existing.length === 0) {
+      if (!existingAddr || existingAddr.length === 0) {
         await supabase.from("addresses").insert({
-          user_id: userId,
+          user_id: order.user_id,
           ...shippingAddress,
           is_default: false,
         });

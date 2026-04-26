@@ -1,11 +1,12 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import type { Product } from "@/types";
 import { formatPrice } from "@/lib/utils";
 import { useCart } from "@/hooks/use-cart";
-import { ShoppingBag } from "lucide-react";
+import { ShoppingBag, Check } from "lucide-react";
 import { useShopT, useProductT } from "@/lib/shop-i18n";
 
 interface ProductCardProps {
@@ -16,6 +17,7 @@ export function ProductCard({ product }: ProductCardProps) {
   const addItem = useCart((s) => s.addItem);
   const t = useShopT();
   const pt = useProductT();
+  const [added, setAdded] = useState(false);
   const primaryImage = product.images?.find((img) => img.is_primary) || product.images?.[0];
   const secondImage = product.images?.find((img) => !img.is_primary && img.sort_order === 1);
   const firstVariant = product.variants?.[0];
@@ -25,6 +27,8 @@ export function ProductCard({ product }: ProductCardProps) {
     e.stopPropagation();
     if (firstVariant) {
       addItem(product, firstVariant);
+      setAdded(true);
+      setTimeout(() => setAdded(false), 1200);
     }
   }
 
@@ -64,10 +68,23 @@ export function ProductCard({ product }: ProductCardProps) {
           <div className="absolute bottom-3 left-3 right-3 opacity-0 group-hover:opacity-100 translate-y-2 group-hover:translate-y-0 transition-all duration-300">
             <button
               onClick={handleQuickAdd}
-              className="w-full py-2.5 rounded-lg glass text-sm font-medium text-foreground hover:bg-white transition-colors flex items-center justify-center gap-2"
+              className={`w-full py-2.5 rounded-lg glass text-sm font-medium transition-all duration-300 flex items-center justify-center gap-2 ${
+                added
+                  ? "bg-green-500/90 text-white"
+                  : "text-foreground hover:bg-white"
+              }`}
             >
-              <ShoppingBag className="h-4 w-4" />
-              {t("products.quickAdd")}
+              {added ? (
+                <>
+                  <Check className="h-4 w-4" />
+                  {t("products.added")}
+                </>
+              ) : (
+                <>
+                  <ShoppingBag className="h-4 w-4" />
+                  {t("products.quickAdd")}
+                </>
+              )}
             </button>
           </div>
         )}

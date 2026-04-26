@@ -1,7 +1,12 @@
 "use client";
 
+import { useState } from "react";
 import { useShopT } from "@/lib/shop-i18n";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { requestRefund } from "@/actions/orders";
+import { useRouter } from "next/navigation";
+import { Loader2 } from "lucide-react";
 
 interface Order {
   id: string;
@@ -30,6 +35,20 @@ const STATUS_COLORS: Record<string, string> = {
 
 export function AccountOrdersContent({ orders }: { orders: Order[] }) {
   const t = useShopT();
+  const router = useRouter();
+  const [refundingId, setRefundingId] = useState<string | null>(null);
+
+  async function handleRefund(orderId: string) {
+    if (!confirm(t("account.refundConfirm"))) return;
+    setRefundingId(orderId);
+    const result = await requestRefund(orderId);
+    setRefundingId(null);
+    if (result.success) {
+      router.refresh();
+    } else {
+      alert(result.error || t("account.refundError"));
+    }
+  }
 
   return (
     <div>
@@ -70,10 +89,31 @@ export function AccountOrdersContent({ orders }: { orders: Order[] }) {
                 </div>
               )}
 
-              <div className="border-t border-border pt-3 mt-3 flex justify-between font-medium">
+              <div className="border-t border-border pt-3 mt-3 flex justify-between items-center font-medium">
                 <span>{t("cart.total")}</span>
                 <span>${order.total.toFixed(2)}</span>
               </div>
+
+              {["confirmed", "processing"].includes(order.status) && (
+                <div className="mt-3 flex justify-end">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={refundingId === order.id}
+                    onClick={() => handleRefund(order.id)}
+                    className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                  >
+                    {refundingId === order.id ? (
+                      <>
+                        <Loader2 className="mr-1.5 h-3 w-3 animate-spin" />
+                        {t("account.refunding")}
+                      </>
+                    ) : (
+                      t("account.requestRefund")
+                    )}
+                  </Button>
+                </div>
+              )}
             </div>
           ))}
         </div>

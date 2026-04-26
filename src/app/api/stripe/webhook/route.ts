@@ -3,15 +3,6 @@ import { getStripeServer } from "@/lib/stripe/server";
 import { createServiceClient } from "@/lib/supabase/server";
 import Stripe from "stripe";
 
-interface CartItem {
-  product_id: string;
-  variant_id: string;
-  name: string;
-  variant_label?: string;
-  quantity: number;
-  unit_price: number;
-}
-
 export async function POST(request: Request) {
   const body = await request.text();
   const sig = request.headers.get("stripe-signature");
@@ -41,11 +32,11 @@ export async function POST(request: Request) {
     try {
       const supabase = await createServiceClient();
 
-      const userId = session.metadata?.user_id;
-      const cartItemsJson = session.metadata?.cart_items;
-      const cartItems: CartItem[] = cartItemsJson
-        ? JSON.parse(cartItemsJson)
-        : [];
+      const orderId = session.metadata?.order_id;
+      if (!orderId) {
+        console.error("No order_id in session metadata");
+        return NextResponse.json({ received: true });
+      }
 
       const shipping = session.collected_information?.shipping_details;
 
@@ -59,17 +50,16 @@ export async function POST(request: Request) {
         country: shipping?.address?.country || "",
       };
 
-      const subtotal = (session.amount_subtotal || 0) / 100;
       const total = (session.amount_total || 0) / 100;
+      const subtotal = (session.amount_subtotal || 0) / 100;
       const shippingCost =
         (session.total_details?.amount_shipping || 0) / 100;
       const tax = (session.total_details?.amount_tax || 0) / 100;
 
-      // Create order
+      // Update pending order to confirmed
       const { data: order, error: orderError } = await supabase
         .from("orders")
-        .insert({
-          user_id: userId !== "guest" ? userId : null,
+        .update({
           status: "confirmed",
           subtotal,
           shipping_cost: shippingCost,
@@ -77,37 +67,28 @@ export async function POST(request: Request) {
           total,
           currency: session.currency || "usd",
           shipping_address: shippingAddress,
-          stripe_checkout_session_id: session.id,
           stripe_payment_intent_id:
             typeof session.payment_intent === "string"
               ? session.payment_intent
               : null,
         })
-        .select("id")
+        .eq("id", orderId)
+        .select("id, user_id")
         .single();
 
       if (orderError) {
-        console.error("Order creation error:", orderError);
+        console.error("Order update error:", orderError);
         return NextResponse.json({ received: true });
       }
 
-      // Create order items with real product/variant IDs
-      if (order && cartItems.length > 0) {
-        const orderItems = cartItems.map((item) => ({
-          order_id: order.id,
-          product_id: item.product_id,
-          variant_id: item.variant_id,
-          product_name: item.name,
-          variant_label: item.variant_label || null,
-          quantity: item.quantity,
-          unit_price: item.unit_price,
-          total: item.unit_price * item.quantity,
-        }));
+      // Deduct stock
+      const { data: items } = await supabase
+        .from("order_items")
+        .select("variant_id, quantity")
+        .eq("order_id", orderId);
 
-        await supabase.from("order_items").insert(orderItems);
-
-        // Deduct stock for each variant
-        for (const item of cartItems) {
+      if (items) {
+        for (const item of items) {
           if (item.variant_id) {
             await supabase.rpc("deduct_stock", {
               p_variant_id: item.variant_id,
@@ -117,19 +98,19 @@ export async function POST(request: Request) {
         }
       }
 
-      // Sync shipping address to user's saved addresses (skip guests)
-      if (userId && userId !== "guest" && shippingAddress.line1) {
+      // Sync shipping address to user's saved addresses
+      if (order?.user_id && shippingAddress.line1) {
         const { data: existing } = await supabase
           .from("addresses")
           .select("id")
-          .eq("user_id", userId)
+          .eq("user_id", order.user_id)
           .eq("line1", shippingAddress.line1)
           .eq("postal_code", shippingAddress.postal_code)
           .limit(1);
 
         if (!existing || existing.length === 0) {
           await supabase.from("addresses").insert({
-            user_id: userId,
+            user_id: order.user_id,
             ...shippingAddress,
             is_default: false,
           });

@@ -86,6 +86,7 @@ const dict = {
   "products.noProducts": { en: "No products found.", vi: "Không tìm thấy sản phẩm." },
   "products.results": { en: "Results for", vi: "Kết quả cho" },
   "products.quickAdd": { en: "Quick Add", vi: "Thêm Nhanh" },
+  "products.added": { en: "Added!", vi: "Đã Thêm!" },
   "products.sale": { en: "Sale", vi: "Giảm Giá" },
 
   // Product Detail
@@ -187,6 +188,11 @@ const dict = {
   "account.addAddress": { en: "Add New Address", vi: "Thêm Địa Chỉ Mới" },
   "account.default": { en: "Default", vi: "Mặc Định" },
   "account.accountSettings": { en: "Account Settings", vi: "Cài Đặt Tài Khoản" },
+  "account.requestRefund": { en: "Request Refund", vi: "Yêu Cầu Hoàn Tiền" },
+  "account.refundConfirm": { en: "Are you sure you want to request a refund for this order?", vi: "Bạn có chắc muốn yêu cầu hoàn tiền cho đơn hàng này?" },
+  "account.refundSuccess": { en: "Refund requested successfully", vi: "Yêu cầu hoàn tiền thành công" },
+  "account.refundError": { en: "Failed to request refund", vi: "Yêu cầu hoàn tiền thất bại" },
+  "account.refunding": { en: "Processing...", vi: "Đang xử lý..." },
 
   // Footer
   "footer.shop": { en: "Shop", vi: "Mua Sắm" },

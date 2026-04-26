@@ -1,6 +1,7 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
+import { getStripeServer } from "@/lib/stripe/server";
 import type { Order } from "@/types";
 
 export async function getUserOrders() {
@@ -91,4 +92,41 @@ export async function updateProfile(formData: FormData) {
 
   if (error) return { error: error.message };
   return { success: true };
+}
+
+export async function requestRefund(orderId: string) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) return { error: "Not authenticated" };
+
+  const { data: order } = await supabase
+    .from("orders")
+    .select("id, status, stripe_payment_intent_id, user_id")
+    .eq("id", orderId)
+    .eq("user_id", user.id)
+    .single();
+
+  if (!order) return { error: "Order not found" };
+
+  if (!["confirmed", "processing"].includes(order.status)) {
+    return { error: "This order cannot be refunded" };
+  }
+
+  if (!order.stripe_payment_intent_id) {
+    return { error: "No payment found for this order" };
+  }
+
+  try {
+    const stripe = getStripeServer();
+    await stripe.refunds.create({
+      payment_intent: order.stripe_payment_intent_id,
+    });
+    return { success: true };
+  } catch (err) {
+    console.error("Refund error:", err);
+    return { error: "Failed to process refund" };
+  }
 }
