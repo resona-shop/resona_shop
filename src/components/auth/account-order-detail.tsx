@@ -8,39 +8,7 @@ import { Button } from "@/components/ui/button";
 import { requestRefund } from "@/actions/orders";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, Loader2, MapPin } from "lucide-react";
-
-interface OrderItem {
-  id: string;
-  product_name: string;
-  variant_label: string | null;
-  quantity: number;
-  unit_price: number;
-  total: number;
-}
-
-interface ShippingAddress {
-  full_name?: string;
-  line1?: string;
-  line2?: string;
-  city?: string;
-  state?: string;
-  postal_code?: string;
-  country?: string;
-}
-
-interface Order {
-  id: string;
-  order_number: string;
-  status: string;
-  created_at: string;
-  subtotal: number;
-  shipping_cost: number;
-  tax: number;
-  total: number;
-  currency: string;
-  shipping_address: ShippingAddress;
-  items?: OrderItem[];
-}
+import type { Order } from "@/types";
 
 const STATUS_COLORS: Record<string, string> = {
   pending: "bg-amber-100 text-amber-800",
