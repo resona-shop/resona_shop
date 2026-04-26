@@ -157,6 +157,16 @@ const dict = {
   "status.delivered": { zh: "已送达", en: "Delivered" },
   "status.cancelled": { zh: "已取消", en: "Cancelled" },
   "status.refunded": { zh: "已退款", en: "Refunded" },
+  "status.refund_requested": { zh: "退款申请中", en: "Refund Requested" },
+
+  // Refund actions
+  "orders.approveRefund": { zh: "批准退款", en: "Approve Refund" },
+  "orders.rejectRefund": { zh: "拒绝退款", en: "Reject Refund" },
+  "orders.refundApproved": { zh: "退款已批准", en: "Refund approved" },
+  "orders.refundRejected": { zh: "退款已拒绝", en: "Refund rejected" },
+  "orders.refundFailed": { zh: "退款失败", en: "Refund failed" },
+  "orders.refundConfirm": { zh: "确认批准此订单的退款申请？将通过 Stripe 退款给客户。", en: "Approve refund for this order? This will refund the customer via Stripe." },
+  "orders.rejectConfirm": { zh: "确认拒绝此退款申请？订单将恢复为已确认状态。", en: "Reject this refund request? The order will be restored to confirmed status." },
 
   // Customers
   "customers.title": { zh: "客户管理", en: "Customers" },

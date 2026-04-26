@@ -20,11 +20,12 @@ const STATUS_COLORS: Record<string, string> = {
   shipped: "bg-purple-100 text-purple-800",
   delivered: "bg-green-100 text-green-800",
   cancelled: "bg-red-100 text-red-800",
+  refund_requested: "bg-orange-100 text-orange-800",
   refunded: "bg-gray-100 text-gray-800",
 };
 
 const ALL_STATUSES = [
-  "pending", "confirmed", "processing", "shipped", "delivered", "cancelled", "refunded",
+  "pending", "confirmed", "processing", "shipped", "delivered", "cancelled", "refund_requested", "refunded",
 ];
 
 interface OrderDetailProps {
@@ -57,16 +58,18 @@ interface OrderDetailProps {
     }>;
     user?: { id?: string; full_name?: string; email?: string; phone?: string } | null;
   };
-  onUpdateStatus: (formData: FormData) => Promise<void>;
+  onUpdateStatus: (status: string) => Promise<{ error?: string; success?: boolean }>;
   onUpdateNotes: (notes: string) => Promise<{ error?: string; success?: boolean }>;
   onUpdateTracking: (data: { shipping_carrier: string; tracking_number: string }) => Promise<{ error?: string; success?: boolean }>;
   onMarkDelivered: () => Promise<{ error?: string; success?: boolean }>;
   onUpdateAddress: (address: Record<string, string>) => Promise<{ error?: string; success?: boolean }>;
   onUpdateAmounts: (amounts: { subtotal: number; shipping_cost: number; tax: number; total: number }) => Promise<{ error?: string; success?: boolean }>;
+  onApproveRefund?: () => Promise<{ error?: string; success?: boolean }>;
+  onRejectRefund?: () => Promise<{ error?: string; success?: boolean }>;
 }
 
 export function OrderDetailContent({
-  order, onUpdateStatus, onUpdateNotes, onUpdateTracking, onMarkDelivered, onUpdateAddress, onUpdateAmounts,
+  order, onUpdateStatus, onUpdateNotes, onUpdateTracking, onMarkDelivered, onUpdateAddress, onUpdateAmounts, onApproveRefund, onRejectRefund,
 }: OrderDetailProps) {
   const t = useT();
   const locale = useAdminLocale((s) => s.locale);
@@ -92,6 +95,15 @@ export function OrderDetailContent({
     total: order.total,
   });
   const [savingAmounts, setSavingAmounts] = useState(false);
+  const [refundProcessing, setRefundProcessing] = useState(false);
+  const [toast, setToast] = useState<{ type: "success" | "error"; message: string } | null>(null);
+  const [statusValue, setStatusValue] = useState(order.status);
+  const [updatingStatus, setUpdatingStatus] = useState(false);
+
+  function showToast(type: "success" | "error", message: string) {
+    setToast({ type, message });
+    setTimeout(() => setToast(null), 3000);
+  }
 
   const formatDate = (d: string) =>
     new Date(d).toLocaleDateString(locale === "zh" ? "zh-CN" : "en-US", {
@@ -104,6 +116,18 @@ export function OrderDetailContent({
     setSavingNotes(false);
     setNotesSaved(true);
     setTimeout(() => setNotesSaved(false), 2000);
+  }
+
+  async function handleStatusUpdate() {
+    setUpdatingStatus(true);
+    const result = await onUpdateStatus(statusValue);
+    setUpdatingStatus(false);
+    if (result.error) {
+      showToast("error", result.error);
+    } else {
+      showToast("success", locale === "zh" ? "状态更新成功" : "Status updated successfully");
+      window.location.reload();
+    }
   }
 
   async function handleSaveTracking() {
@@ -134,6 +158,32 @@ export function OrderDetailContent({
     window.location.reload();
   }
 
+  async function handleApproveRefund() {
+    if (!onApproveRefund || !confirm(t("orders.refundConfirm"))) return;
+    setRefundProcessing(true);
+    const result = await onApproveRefund();
+    setRefundProcessing(false);
+    if (result.error) {
+      showToast("error", result.error);
+    } else {
+      showToast("success", t("orders.refundApproved"));
+      window.location.reload();
+    }
+  }
+
+  async function handleRejectRefund() {
+    if (!onRejectRefund || !confirm(t("orders.rejectConfirm"))) return;
+    setRefundProcessing(true);
+    const result = await onRejectRefund();
+    setRefundProcessing(false);
+    if (result.error) {
+      showToast("error", result.error);
+    } else {
+      showToast("success", t("orders.refundRejected"));
+      window.location.reload();
+    }
+  }
+
   function updateAddr(key: string, value: string) {
     setAddr((prev) => ({ ...prev, [key]: value }));
   }
@@ -147,6 +197,15 @@ export function OrderDetailContent({
 
   return (
     <div className="max-w-3xl space-y-6">
+      {/* Toast notification */}
+      {toast && (
+        <div className={`fixed top-4 right-4 z-50 px-4 py-3 rounded-lg shadow-lg text-sm font-medium transition-all ${
+          toast.type === "success" ? "bg-green-600 text-white" : "bg-red-600 text-white"
+        }`}>
+          {toast.message}
+        </div>
+      )}
+
       <Link
         href="/admin/orders"
         className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
@@ -173,17 +232,49 @@ export function OrderDetailContent({
       {/* Status update */}
       <div className="bg-card rounded-xl shadow-warm-sm p-5">
         <h2 className="font-medium mb-3">{t("orders.updateStatus")}</h2>
-        <form action={onUpdateStatus} className="flex items-center gap-3">
-          <select name="status" defaultValue={order.status} className="h-9 rounded-md border border-input bg-background px-3 text-sm">
+        <div className="flex items-center gap-3">
+          <select value={statusValue} onChange={(e) => setStatusValue(e.target.value)} className="h-9 rounded-md border border-input bg-background px-3 text-sm">
             {ALL_STATUSES.map((s) => (
               <option key={s} value={s}>{getStatusLabel(s, locale)}</option>
             ))}
           </select>
-          <button type="submit" className="px-4 h-9 rounded-md bg-primary text-primary-foreground text-sm font-medium hover:opacity-90">
+          <Button onClick={handleStatusUpdate} disabled={updatingStatus} size="sm" className="bg-primary text-primary-foreground hover:opacity-90">
+            {updatingStatus ? <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" /> : null}
             {t("orders.update")}
-          </button>
-        </form>
+          </Button>
+        </div>
       </div>
+
+      {/* Refund approval */}
+      {order.status === "refund_requested" && onApproveRefund && onRejectRefund && (
+        <div className="bg-orange-50 border border-orange-200 rounded-xl p-5">
+          <h2 className="font-medium mb-2 text-orange-800">{getStatusLabel("refund_requested", locale)}</h2>
+          <p className="text-sm text-orange-700 mb-4">
+            {locale === "zh" ? "客户已申请退款，请审核后批准或拒绝。" : "Customer has requested a refund. Please review and approve or reject."}
+          </p>
+          <div className="flex items-center gap-3">
+            <Button
+              onClick={handleApproveRefund}
+              disabled={refundProcessing}
+              size="sm"
+              className="bg-green-600 text-white hover:bg-green-700"
+            >
+              {refundProcessing ? <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" /> : <Check className="mr-2 h-3.5 w-3.5" />}
+              {t("orders.approveRefund")}
+            </Button>
+            <Button
+              onClick={handleRejectRefund}
+              disabled={refundProcessing}
+              size="sm"
+              variant="outline"
+              className="text-red-600 border-red-200 hover:bg-red-50"
+            >
+              <X className="mr-2 h-3.5 w-3.5" />
+              {t("orders.rejectRefund")}
+            </Button>
+          </div>
+        </div>
+      )}
 
       {/* Tracking / Shipping */}
       <div className="bg-card rounded-xl shadow-warm-sm p-5">

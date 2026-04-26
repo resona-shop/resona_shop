@@ -7,9 +7,10 @@ import {
   markOrderDelivered,
   updateOrderAddress,
   updateOrderAmounts,
+  approveRefund,
+  rejectRefund,
 } from "@/actions/admin";
 import { OrderDetailContent } from "@/components/admin/order-detail-content";
-import { redirect } from "next/navigation";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
@@ -26,11 +27,9 @@ export default async function AdminOrderDetailPage({
 
   if (!order) notFound();
 
-  async function handleStatusUpdate(formData: FormData) {
+  async function handleStatusUpdate(status: string) {
     "use server";
-    const status = formData.get("status") as string;
-    await updateOrderStatus(id, status);
-    redirect(`/admin/orders/${id}`);
+    return await updateOrderStatus(id, status);
   }
 
   async function handleUpdateNotes(notes: string) {
@@ -58,6 +57,16 @@ export default async function AdminOrderDetailPage({
     return await updateOrderAmounts(id, amounts);
   }
 
+  async function handleApproveRefund() {
+    "use server";
+    return await approveRefund(id);
+  }
+
+  async function handleRejectRefund() {
+    "use server";
+    return await rejectRefund(id);
+  }
+
   return (
     <OrderDetailContent
       order={order}
@@ -67,6 +76,8 @@ export default async function AdminOrderDetailPage({
       onMarkDelivered={handleMarkDelivered}
       onUpdateAddress={handleUpdateAddress}
       onUpdateAmounts={handleUpdateAmounts}
+      onApproveRefund={handleApproveRefund}
+      onRejectRefund={handleRejectRefund}
     />
   );
 }

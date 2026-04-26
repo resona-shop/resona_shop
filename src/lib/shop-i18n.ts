@@ -193,6 +193,7 @@ const dict = {
   "account.refundSuccess": { en: "Refund requested successfully", vi: "Yêu cầu hoàn tiền thành công" },
   "account.refundError": { en: "Failed to request refund", vi: "Yêu cầu hoàn tiền thất bại" },
   "account.refunding": { en: "Processing...", vi: "Đang xử lý..." },
+  "account.refundPending": { en: "Your refund request is being reviewed. We'll process it shortly.", vi: "Yêu cầu hoàn tiền của bạn đang được xem xét. Chúng tôi sẽ xử lý sớm." },
   "account.orderDetail": { en: "Order Detail", vi: "Chi Tiết Đơn Hàng" },
   "account.backToOrders": { en: "Back to Orders", vi: "Quay Lại Đơn Hàng" },
   "account.shippingAddress": { en: "Shipping Address", vi: "Địa Chỉ Giao Hàng" },
@@ -201,6 +202,16 @@ const dict = {
   "account.shipping": { en: "Shipping", vi: "Phí Vận Chuyển" },
   "account.tax": { en: "Tax", vi: "Thuế" },
   "account.viewOrder": { en: "View Details", vi: "Xem Chi Tiết" },
+
+  // Order statuses
+  "status.pending": { en: "Pending", vi: "Chờ Xử Lý" },
+  "status.confirmed": { en: "Confirmed", vi: "Đã Xác Nhận" },
+  "status.processing": { en: "Processing", vi: "Đang Xử Lý" },
+  "status.shipped": { en: "Shipped", vi: "Đã Gửi" },
+  "status.delivered": { en: "Delivered", vi: "Đã Giao" },
+  "status.cancelled": { en: "Cancelled", vi: "Đã Hủy" },
+  "status.refund_requested": { en: "Refund Requested", vi: "Đang Yêu Cầu Hoàn Tiền" },
+  "status.refunded": { en: "Refunded", vi: "Đã Hoàn Tiền" },
 
   // Footer
   "footer.shop": { en: "Shop", vi: "Mua Sắm" },

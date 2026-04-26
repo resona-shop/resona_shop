@@ -17,6 +17,7 @@ const STATUS_COLORS: Record<string, string> = {
   shipped: "bg-purple-100 text-purple-800",
   delivered: "bg-green-100 text-green-800",
   cancelled: "bg-red-100 text-red-800",
+  refund_requested: "bg-orange-100 text-orange-800",
   refunded: "bg-gray-100 text-gray-800",
 };
 
@@ -53,7 +54,7 @@ export function AccountOrderDetail({ order }: { order: Order }) {
         <div>
           <h2 className="text-xl font-medium">{order.order_number}</h2>
           <p className="text-sm text-muted-foreground mt-0.5">
-            {new Date(order.created_at).toLocaleDateString(undefined, {
+            {new Date(order.created_at).toLocaleDateString("en-US", {
               year: "numeric",
               month: "long",
               day: "numeric",
@@ -61,7 +62,7 @@ export function AccountOrderDetail({ order }: { order: Order }) {
           </p>
         </div>
         <Badge variant="secondary" className={STATUS_COLORS[order.status] || ""}>
-          {order.status}
+          {t(`status.${order.status}` as Parameters<typeof t>[0])}
         </Badge>
       </div>
 
@@ -147,6 +148,11 @@ export function AccountOrderDetail({ order }: { order: Order }) {
                 t("account.requestRefund")
               )}
             </Button>
+          </div>
+        )}
+        {order.status === "refund_requested" && (
+          <div className="rounded-lg border border-orange-200 bg-orange-50 px-4 py-3 text-sm text-orange-800">
+            {t("account.refundPending")}
           </div>
         )}
       </div>

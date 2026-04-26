@@ -1,6 +1,7 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
+import { getStripeServer } from "@/lib/stripe/server";
 import { redirect } from "next/navigation";
 
 export async function getAdminStats() {
@@ -194,6 +195,60 @@ export async function updateOrderAmounts(
     .from("orders")
     .update(amounts)
     .eq("id", id);
+  if (error) return { error: error.message };
+  return { success: true };
+}
+
+export async function approveRefund(orderId: string) {
+  const supabase = await createClient();
+
+  const { data: order } = await supabase
+    .from("orders")
+    .select("id, status, stripe_payment_intent_id")
+    .eq("id", orderId)
+    .single();
+
+  if (!order) return { error: "Order not found" };
+  if (order.status !== "refund_requested") return { error: "Order is not pending refund" };
+  if (!order.stripe_payment_intent_id) return { error: "No payment intent found" };
+
+  try {
+    const stripe = getStripeServer();
+    await stripe.refunds.create({
+      payment_intent: order.stripe_payment_intent_id,
+    });
+
+    await supabase
+      .from("orders")
+      .update({ status: "refunded" })
+      .eq("id", orderId);
+
+    return { success: true };
+  } catch (err: unknown) {
+    console.error("Approve refund error:", err);
+    const message =
+      err instanceof Error ? err.message : "Failed to process refund";
+    return { error: message };
+  }
+}
+
+export async function rejectRefund(orderId: string) {
+  const supabase = await createClient();
+
+  const { data: order } = await supabase
+    .from("orders")
+    .select("id, status")
+    .eq("id", orderId)
+    .single();
+
+  if (!order) return { error: "Order not found" };
+  if (order.status !== "refund_requested") return { error: "Order is not pending refund" };
+
+  const { error } = await supabase
+    .from("orders")
+    .update({ status: "confirmed" })
+    .eq("id", orderId);
+
   if (error) return { error: error.message };
   return { success: true };
 }

@@ -7,6 +7,7 @@ export type OrderStatus =
   | "shipped"
   | "delivered"
   | "cancelled"
+  | "refund_requested"
   | "refunded";
 
 export interface Profile {
