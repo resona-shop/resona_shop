@@ -66,6 +66,13 @@ export function AuthForm({ mode }: AuthFormProps) {
           <Label htmlFor="password">{t("auth.password")}</Label>
           <Input id="password" name="password" type="password" placeholder="••••••••" required minLength={6} className="bg-card" />
         </div>
+        {mode === "login" && (
+          <div className="text-right">
+            <Link href="/forgot-password" className="text-sm text-primary hover:underline">
+              {t("auth.forgotPassword")}
+            </Link>
+          </div>
+        )}
         <Button type="submit" disabled={loading} className="w-full bg-gradient-golden text-white shadow-glow-coral hover:opacity-90 transition-opacity">
           {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
           {mode === "login" ? t("auth.signIn") : t("auth.signUp")}
