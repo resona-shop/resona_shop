@@ -2,6 +2,7 @@
 
 import { useShopT } from "@/lib/shop-i18n";
 import { MapPin } from "lucide-react";
+import { DeleteAddressButton } from "@/app/(account)/account/addresses/delete-button";
 
 interface Address {
   id: string;
@@ -18,11 +19,9 @@ interface Address {
 
 export function AccountAddressesContent({
   addresses,
-  deleteButton,
   addForm,
 }: {
   addresses: Address[];
-  deleteButton: (id: string) => React.ReactNode;
   addForm: React.ReactNode;
 }) {
   const t = useShopT();
@@ -53,7 +52,7 @@ export function AccountAddressesContent({
               {addr.country}
             </p>
             {addr.phone && <p className="text-xs text-muted-foreground mt-1">{addr.phone}</p>}
-            {deleteButton(addr.id)}
+            <DeleteAddressButton id={addr.id} />
           </div>
         ))}
 

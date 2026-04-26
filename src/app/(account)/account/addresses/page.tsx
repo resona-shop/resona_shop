@@ -1,6 +1,5 @@
 import { getUserAddresses } from "@/actions/orders";
 import { AddAddressForm } from "./address-form";
-import { DeleteAddressButton } from "./delete-button";
 import { AccountAddressesContent } from "@/components/auth/account-addresses";
 import type { Metadata } from "next";
 
@@ -14,7 +13,6 @@ export default async function AddressesPage() {
   return (
     <AccountAddressesContent
       addresses={addresses}
-      deleteButton={(id) => <DeleteAddressButton id={id} />}
       addForm={<AddAddressForm />}
     />
   );
