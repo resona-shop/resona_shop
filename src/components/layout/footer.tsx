@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { Separator } from "@/components/ui/separator";
 import { useShopT } from "@/lib/shop-i18n";
+import { BrandLogo } from "@/components/layout/brand-logo";
 
 export function Footer() {
   const t = useShopT();
@@ -33,8 +34,8 @@ export function Footer() {
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-12 lg:py-16">
         <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
           <div className="col-span-2 md:col-span-1">
-            <Link href="/" className="font-[family-name:var(--font-playfair)] text-2xl tracking-wide text-gradient-golden">
-              Resona
+            <Link href="/" className="inline-block" aria-label="Resona home">
+              <BrandLogo className="h-10" />
             </Link>
             <p className="mt-3 text-sm text-muted-foreground leading-relaxed max-w-xs">
               {t("footer.brand")}

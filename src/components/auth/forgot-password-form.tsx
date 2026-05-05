@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Loader2 } from "lucide-react";
 import { useShopT } from "@/lib/shop-i18n";
+import { BrandLogo } from "@/components/layout/brand-logo";
 
 export function ForgotPasswordForm() {
   const [error, setError] = useState<string | null>(null);
@@ -31,7 +32,7 @@ export function ForgotPasswordForm() {
     <div className="w-full max-w-sm mx-auto space-y-6">
       <div className="text-center space-y-2">
         <Link href="/" className="inline-block">
-          <h1 className="font-[family-name:var(--font-playfair)] text-3xl tracking-wide text-gradient-golden">Resona</h1>
+          <BrandLogo priority className="h-12" />
         </Link>
         <p className="text-muted-foreground text-sm">
           {t("auth.forgotSubtitle")}

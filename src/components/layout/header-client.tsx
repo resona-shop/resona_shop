@@ -6,6 +6,7 @@ import { LocaleSwitch } from "@/components/layout/locale-switch";
 import { SearchDialog } from "@/components/layout/search-dialog";
 import { CartButton } from "@/components/cart/cart-button";
 import { MobileNav } from "@/components/layout/mobile-nav";
+import { BrandLogo } from "@/components/layout/brand-logo";
 
 const navKeys = [
   { key: "nav.newArrivals" as const, href: "/collections/new-arrivals" },
@@ -25,9 +26,10 @@ export function HeaderClient({ children }: { children?: React.ReactNode }) {
             <MobileNav />
             <Link
               href="/"
-              className="font-[family-name:var(--font-playfair)] text-xl sm:text-2xl tracking-wide text-gradient-golden shrink-0"
+              className="shrink-0"
+              aria-label="Resona home"
             >
-              Resona
+              <BrandLogo priority className="h-9 sm:h-10" />
             </Link>
           </div>
 

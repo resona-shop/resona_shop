@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Menu } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useShopT } from "@/lib/shop-i18n";
+import { BrandLogo } from "@/components/layout/brand-logo";
 
 const navKeys = [
   { key: "nav.newArrivals" as const, href: "/collections/new-arrivals" },
@@ -31,8 +32,8 @@ export function MobileNav() {
         <SheetTitle className="sr-only">Menu</SheetTitle>
         <div className="flex flex-col h-full">
           <div className="p-6 border-b border-border">
-            <Link href="/" onClick={() => setOpen(false)} className="font-[family-name:var(--font-playfair)] text-2xl tracking-wide text-gradient-golden">
-              Resona
+            <Link href="/" onClick={() => setOpen(false)} aria-label="Resona home">
+              <BrandLogo className="h-10" />
             </Link>
           </div>
           <nav className="flex-1 p-4 space-y-1">

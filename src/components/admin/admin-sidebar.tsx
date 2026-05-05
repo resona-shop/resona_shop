@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { useT } from "@/lib/admin-i18n";
+import { BrandLogo } from "@/components/layout/brand-logo";
 import {
   LayoutDashboard,
   Package,
@@ -35,9 +36,13 @@ export function AdminSidebar() {
       <div className="p-4">
         <Link
           href="/admin"
-          className="font-[family-name:var(--font-playfair)] text-lg tracking-wide text-gradient-golden"
+          className="flex items-center gap-2"
+          aria-label="Resona Admin"
         >
-          Resona Admin
+          <BrandLogo className="h-7" />
+          <span className="text-xs font-semibold uppercase tracking-wide text-sidebar-foreground/60">
+            Admin
+          </span>
         </Link>
       </div>
       <nav className="px-2 space-y-0.5">
