@@ -4,6 +4,7 @@ import { useT, useAdminLocale, getStatusLabel } from "@/lib/admin-i18n";
 import { Badge } from "@/components/ui/badge";
 import Link from "next/link";
 import { ArrowLeft, Mail, Phone, Calendar } from "lucide-react";
+import { formatDate } from "@/lib/utils";
 
 const STATUS_COLORS: Record<string, string> = {
   pending: "bg-amber-100 text-amber-800",
@@ -73,7 +74,7 @@ export function CustomerDetailContent({
           )}
           <div className="flex items-center gap-2 text-muted-foreground">
             <Calendar className="h-4 w-4" />
-            {new Date(profile.created_at).toLocaleDateString()}
+            {formatDate(profile.created_at)}
           </div>
         </div>
 
@@ -112,7 +113,7 @@ export function CustomerDetailContent({
                     </Link>
                   </td>
                   <td className="px-4 py-3 text-muted-foreground">
-                    {new Date(order.created_at).toLocaleDateString()}
+                    {formatDate(order.created_at, locale === "zh" ? "zh-CN" : "en-US")}
                   </td>
                   <td className="px-4 py-3">
                     <Badge variant="secondary" className={STATUS_COLORS[order.status] || ""}>

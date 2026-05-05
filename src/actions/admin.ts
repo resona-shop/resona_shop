@@ -2,7 +2,9 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { getStripeServer } from "@/lib/stripe/server";
+import { defaultNavigationMenuItems } from "@/lib/navigation-menu";
 import { redirect } from "next/navigation";
+import { revalidatePath } from "next/cache";
 
 export async function getAdminStats() {
   const supabase = await createClient();
@@ -47,6 +49,110 @@ export async function getAdminStats() {
     lowStockCount: lowStockCount || 0,
     recentOrders: recentOrders || [],
   };
+}
+
+export async function saveNavigationMenu(formData: FormData) {
+  const supabase = await createClient();
+  const itemsJson = formData.get("items") as string;
+
+  let items: Array<{
+    id?: string;
+    label: string;
+    href: string;
+    has_menu: boolean;
+    is_active: boolean;
+    sort_order: number;
+    parent_id?: string | null;
+  }>;
+
+  try {
+    items = JSON.parse(itemsJson);
+  } catch {
+    return { error: "Invalid menu data" };
+  }
+
+  const existingIds = items
+    .map((item) => item.id)
+    .filter((id): id is string => Boolean(id));
+  const retainedIds = new Set(existingIds);
+
+  const sanitized = items.map((item, index) => {
+    const href = item.href.trim() || "/";
+    const explicitParentId =
+      item.parent_id && retainedIds.has(item.parent_id) ? item.parent_id : null;
+    const inferredParent = items.find((candidate) =>
+      candidate.id &&
+      candidate.id !== item.id &&
+      !candidate.parent_id &&
+      href.startsWith(`${candidate.href.trim()}/`)
+    );
+
+    return {
+      id: item.id,
+      label: item.label.trim(),
+      href,
+      has_menu: Boolean(item.has_menu),
+      is_active: Boolean(item.is_active),
+      sort_order: index,
+      parent_id: explicitParentId || inferredParent?.id || null,
+    };
+  });
+
+  if (sanitized.some((item) => !item.label)) {
+    return { error: "Menu labels cannot be empty" };
+  }
+
+  const deleteQuery = supabase.from("navigation_menu_items").delete();
+  const { error: deleteError } = existingIds.length > 0
+    ? await deleteQuery.not("id", "in", `(${existingIds.join(",")})`)
+    : await deleteQuery.neq("label", "");
+
+  if (deleteError) return { error: deleteError.message };
+
+  const { error } = await supabase
+    .from("navigation_menu_items")
+    .upsert(
+      sanitized.map(({ id, ...item }) => id ? { id, ...item } : item),
+      { onConflict: "id" }
+    );
+
+  if (error) return { error: error.message };
+
+  const { data: savedItems, error: fetchError } = await supabase
+    .from("navigation_menu_items")
+    .select("id, label, href, has_menu, is_active, sort_order, parent_id")
+    .order("sort_order", { ascending: true });
+
+  if (fetchError) return { error: fetchError.message };
+
+  revalidatePath("/");
+  return { success: true, items: savedItems || [] };
+}
+
+export async function resetNavigationMenu() {
+  const supabase = await createClient();
+  const { error: deleteError } = await supabase
+    .from("navigation_menu_items")
+    .delete()
+    .neq("label", "");
+
+  if (deleteError) return { error: deleteError.message };
+
+  const { error } = await supabase
+    .from("navigation_menu_items")
+    .insert(defaultNavigationMenuItems);
+
+  if (error) return { error: error.message };
+
+  revalidatePath("/");
+  const { data: savedItems, error: fetchError } = await supabase
+    .from("navigation_menu_items")
+    .select("id, label, href, has_menu, is_active, sort_order, parent_id")
+    .order("sort_order", { ascending: true });
+
+  if (fetchError) return { error: fetchError.message };
+
+  return { success: true, items: savedItems || [] };
 }
 
 export async function getAdminProducts(search?: string) {

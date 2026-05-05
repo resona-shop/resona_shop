@@ -4,6 +4,7 @@ import { useT, useAdminLocale, getStatusLabel } from "@/lib/admin-i18n";
 import { StatsCard } from "@/components/admin/stats-card";
 import { Package, ShoppingBag, Users, DollarSign, AlertTriangle } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { formatDate } from "@/lib/utils";
 import type { OrderStatus } from "@/types";
 import Link from "next/link";
 
@@ -92,7 +93,7 @@ export function DashboardContent({ stats }: DashboardContentProps) {
                 <tr key={order.id} className="border-b border-border/50">
                   <td className="px-4 py-3 font-medium">{order.order_number}</td>
                   <td className="px-4 py-3 text-muted-foreground">
-                    {new Date(order.created_at).toLocaleDateString()}
+                    {formatDate(order.created_at, locale === "zh" ? "zh-CN" : "en-US")}
                   </td>
                   <td className="px-4 py-3">
                     <Badge variant="secondary" className={STATUS_COLORS[order.status] || ""}>

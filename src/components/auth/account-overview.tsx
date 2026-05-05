@@ -3,6 +3,7 @@
 import { useShopT } from "@/lib/shop-i18n";
 import { Package, MapPin, Heart } from "lucide-react";
 import Link from "next/link";
+import { formatDate } from "@/lib/utils";
 
 interface AccountOverviewProps {
   fullName: string;
@@ -73,7 +74,7 @@ export function AccountOverview({
                 <div>
                   <p className="text-sm font-medium">{order.order_number}</p>
                   <p className="text-xs text-muted-foreground">
-                    {new Date(order.created_at).toLocaleDateString()}
+                    {formatDate(order.created_at)}
                   </p>
                 </div>
                 <div className="text-right">

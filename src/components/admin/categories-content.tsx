@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { Fragment, useState } from "react";
 import { useT } from "@/lib/admin-i18n";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -78,7 +78,10 @@ export function CategoriesContent({
           </thead>
           <tbody>
             {topLevel.map((cat) => (
-              <>{renderRow(cat)}{getChildren(cat.id).map((child) => renderRow(child, true))}</>
+              <Fragment key={cat.id}>
+                {renderRow(cat)}
+                {getChildren(cat.id).map((child) => renderRow(child, true))}
+              </Fragment>
             ))}
             {categories.length === 0 && (
               <tr>

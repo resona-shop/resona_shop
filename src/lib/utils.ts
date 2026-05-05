@@ -18,6 +18,14 @@ export function formatPrice(
   }).format(price);
 }
 
+export function formatDate(
+  date: string | number | Date,
+  locale: string = "en-US",
+  options?: Intl.DateTimeFormatOptions
+) {
+  return new Intl.DateTimeFormat(locale, options).format(new Date(date));
+}
+
 export function slugify(text: string) {
   return text
     .toLowerCase()

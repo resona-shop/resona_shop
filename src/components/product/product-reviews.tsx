@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { formatDate } from "@/lib/utils";
 
 interface Review {
   id: string;
@@ -161,7 +162,7 @@ export function ProductReviews({ productId, initialReviews }: ProductReviewsProp
                   </div>
                 </div>
                 <span className="text-xs text-muted-foreground">
-                  {new Date(review.created_at).toLocaleDateString()}
+                  {formatDate(review.created_at)}
                 </span>
               </div>
               {review.title && <p className="font-medium text-sm mt-3">{review.title}</p>}

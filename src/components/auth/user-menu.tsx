@@ -1,6 +1,7 @@
 import { getUser } from "@/actions/auth";
 import { signOut } from "@/actions/auth";
 import { Button } from "@/components/ui/button";
+import { User } from "lucide-react";
 import Link from "next/link";
 import { UserMenuClient } from "./user-menu-client";
 
@@ -9,9 +10,9 @@ export async function UserMenu() {
 
   if (!user) {
     return (
-      <Link href="/login">
-        <Button variant="ghost" size="sm" className="text-foreground/80 hover:text-foreground">
-          Sign In
+      <Link href="/login" aria-label="Sign in">
+        <Button variant="ghost" size="icon" className="text-foreground/70 hover:text-foreground">
+          <User className="h-5 w-5" />
         </Button>
       </Link>
     );

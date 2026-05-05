@@ -5,6 +5,7 @@ import { useT } from "@/lib/admin-i18n";
 import Link from "next/link";
 import { Search, Eye } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { formatDate } from "@/lib/utils";
 
 interface Customer {
   id: string;
@@ -77,7 +78,7 @@ export function CustomersContent({
                   </span>
                 </td>
                 <td className="px-4 py-3 text-muted-foreground">
-                  {new Date(customer.created_at).toLocaleDateString()}
+                  {formatDate(customer.created_at)}
                 </td>
                 <td className="px-4 py-3 text-right">
                   <Link
