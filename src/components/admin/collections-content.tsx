@@ -17,6 +17,9 @@ interface Collection {
   description: string | null;
   image_url: string | null;
   is_active: boolean;
+  name_vi?: string | null;
+  description_vi?: string | null;
+  sort_order?: number;
 }
 
 interface SimpleProduct {
@@ -211,7 +214,7 @@ export function CollectionsContent({
                   {t("collections.edit")}
                 </button>
                 <button
-                  onClick={() => onDelete(col.id)}
+                  onClick={() => { if (confirm(t("common.confirmDelete"))) onDelete(col.id); }}
                   className="text-xs text-destructive hover:underline inline-flex items-center gap-1 ml-auto"
                 >
                   <Trash2 className="h-3 w-3" />
@@ -275,6 +278,7 @@ export function CollectionsContent({
             </button>
           </div>
           <form
+            key={editingItem.id}
             action={async (formData) => {
               formData.set("image_url", imageUrl);
               await onUpdate(editingItem.id, formData);
@@ -302,6 +306,18 @@ export function CollectionsContent({
                 onChange={(e) => setFormDesc(e.target.value)}
                 className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
               />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="edit-name_vi">{t("form.nameVi")}</Label>
+              <input id="edit-name_vi" name="name_vi" defaultValue={editingItem.name_vi || ""} placeholder={t("form.optional")} className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring" />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="edit-description_vi">{t("form.descriptionVi")}</Label>
+              <input id="edit-description_vi" name="description_vi" defaultValue={editingItem.description_vi || ""} placeholder={t("form.optional")} className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring" />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="edit-sort_order">{t("form.sortOrder")}</Label>
+              <input id="edit-sort_order" name="sort_order" type="number" defaultValue={editingItem.sort_order ?? 0} className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring" />
             </div>
             <CollectionImageField currentUrl={editingItem.image_url} onUploaded={setImageUrl} />
             <div className="flex items-center gap-2">
@@ -343,6 +359,18 @@ export function CollectionsContent({
                 name="description"
                 className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
               />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="name_vi">{t("form.nameVi")}</Label>
+              <input id="name_vi" name="name_vi" placeholder={t("form.optional")} className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring" />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="description_vi">{t("form.descriptionVi")}</Label>
+              <input id="description_vi" name="description_vi" placeholder={t("form.optional")} className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring" />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="sort_order">{t("form.sortOrder")}</Label>
+              <input id="sort_order" name="sort_order" type="number" defaultValue={collections.length} className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring" />
             </div>
             <CollectionImageField onUploaded={setImageUrl} />
             <div className="flex items-center gap-2">

@@ -1,13 +1,48 @@
 "use server";
 
-import { createClient } from "@/lib/supabase/server";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { getStripeServer } from "@/lib/stripe/server";
+import { requireAdmin } from "@/lib/auth";
+import { markOrderRefunded, PAID_ORDER_STATUSES } from "@/lib/orders";
 import { defaultNavigationMenuItems } from "@/lib/navigation-menu";
+import { slugify } from "@/lib/utils";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 
+const NAV_COLUMNS = "id, label, href, has_menu, is_active, sort_order, parent_id";
+
+async function uniqueSlug(
+  supabase: SupabaseClient,
+  table: "products" | "collections" | "categories",
+  source: string,
+  excludeId?: string
+) {
+  const base = slugify(source) || `item-${Date.now().toString(36)}`;
+  const { data } = await supabase.from(table).select("id, slug").like("slug", `${base}%`);
+  const taken = new Set(
+    (data || []).filter((row) => row.id !== excludeId).map((row) => row.slug as string)
+  );
+  if (!taken.has(base)) return base;
+  let n = 2;
+  while (taken.has(`${base}-${n}`)) n++;
+  return `${base}-${n}`;
+}
+
+function text(formData: FormData, key: string) {
+  return ((formData.get(key) as string) || "").trim();
+}
+
+function optionalText(formData: FormData, key: string) {
+  return text(formData, key) || null;
+}
+
+function intOrZero(formData: FormData, key: string) {
+  const n = parseInt(text(formData, key), 10);
+  return Number.isFinite(n) ? n : 0;
+}
+
 export async function getAdminStats() {
-  const supabase = await createClient();
+  const supabase = await requireAdmin();
 
   const [
     { count: productCount },
@@ -18,7 +53,10 @@ export async function getAdminStats() {
     { count: lowStockCount },
   ] = await Promise.all([
     supabase.from("products").select("*", { count: "exact", head: true }),
-    supabase.from("orders").select("*", { count: "exact", head: true }),
+    supabase
+      .from("orders")
+      .select("*", { count: "exact", head: true })
+      .neq("status", "pending"),
     supabase
       .from("profiles")
       .select("*", { count: "exact", head: true })
@@ -26,9 +64,10 @@ export async function getAdminStats() {
     supabase
       .from("orders")
       .select("*")
+      .neq("status", "pending")
       .order("created_at", { ascending: false })
       .limit(5),
-    supabase.from("orders").select("total, created_at").eq("status", "confirmed"),
+    supabase.from("orders").select("total").in("status", PAID_ORDER_STATUSES),
     supabase
       .from("product_variants")
       .select("*", { count: "exact", head: true })
@@ -52,7 +91,7 @@ export async function getAdminStats() {
 }
 
 export async function saveNavigationMenu(formData: FormData) {
-  const supabase = await createClient();
+  const supabase = await requireAdmin();
   const itemsJson = formData.get("items") as string;
 
   let items: Array<{
@@ -76,30 +115,30 @@ export async function saveNavigationMenu(formData: FormData) {
     .filter((id): id is string => Boolean(id));
   const retainedIds = new Set(existingIds);
 
-  const sanitized = items.map((item, index) => {
-    const href = item.href.trim() || "/";
-    const explicitParentId =
-      item.parent_id && retainedIds.has(item.parent_id) ? item.parent_id : null;
-    const inferredParent = items.find((candidate) =>
-      candidate.id &&
-      candidate.id !== item.id &&
-      !candidate.parent_id &&
-      href.startsWith(`${candidate.href.trim()}/`)
-    );
-
-    return {
-      id: item.id,
-      label: item.label.trim(),
-      href,
-      has_menu: Boolean(item.has_menu),
-      is_active: Boolean(item.is_active),
-      sort_order: index,
-      parent_id: explicitParentId || inferredParent?.id || null,
-    };
-  });
+  const sanitized = items.map((item, index) => ({
+    id: item.id,
+    label: item.label.trim(),
+    href: item.href.trim() || "/",
+    has_menu: Boolean(item.has_menu),
+    is_active: Boolean(item.is_active),
+    sort_order: index,
+    parent_id:
+      item.parent_id && item.parent_id !== item.id && retainedIds.has(item.parent_id)
+        ? item.parent_id
+        : null,
+  }));
 
   if (sanitized.some((item) => !item.label)) {
     return { error: "Menu labels cannot be empty" };
+  }
+
+  const badLink = sanitized.find(
+    (item) =>
+      !/^https?:\/\//.test(item.href) &&
+      (!item.href.startsWith("/") || item.href.startsWith("//"))
+  );
+  if (badLink) {
+    return { error: `Invalid link for "${badLink.label}": ${badLink.href}` };
   }
 
   const deleteQuery = supabase.from("navigation_menu_items").delete();
@@ -120,7 +159,7 @@ export async function saveNavigationMenu(formData: FormData) {
 
   const { data: savedItems, error: fetchError } = await supabase
     .from("navigation_menu_items")
-    .select("id, label, href, has_menu, is_active, sort_order, parent_id")
+    .select(NAV_COLUMNS)
     .order("sort_order", { ascending: true });
 
   if (fetchError) return { error: fetchError.message };
@@ -130,7 +169,7 @@ export async function saveNavigationMenu(formData: FormData) {
 }
 
 export async function resetNavigationMenu() {
-  const supabase = await createClient();
+  const supabase = await requireAdmin();
   const { error: deleteError } = await supabase
     .from("navigation_menu_items")
     .delete()
@@ -147,7 +186,7 @@ export async function resetNavigationMenu() {
   revalidatePath("/");
   const { data: savedItems, error: fetchError } = await supabase
     .from("navigation_menu_items")
-    .select("id, label, href, has_menu, is_active, sort_order, parent_id")
+    .select(NAV_COLUMNS)
     .order("sort_order", { ascending: true });
 
   if (fetchError) return { error: fetchError.message };
@@ -155,8 +194,31 @@ export async function resetNavigationMenu() {
   return { success: true, items: savedItems || [] };
 }
 
+export async function saveAnnouncement(value: {
+  enabled: boolean;
+  en: string;
+  vi: string;
+}) {
+  const supabase = await requireAdmin();
+  const { error } = await supabase.from("site_settings").upsert(
+    {
+      key: "announcement",
+      value: {
+        enabled: Boolean(value.enabled),
+        en: value.en.trim(),
+        vi: value.vi.trim(),
+      },
+      updated_at: new Date().toISOString(),
+    },
+    { onConflict: "key" }
+  );
+  if (error) return { error: error.message };
+  revalidatePath("/");
+  return { success: true };
+}
+
 export async function getAdminProducts(search?: string) {
-  const supabase = await createClient();
+  const supabase = await requireAdmin();
   let query = supabase
     .from("products")
     .select("*, category:categories(name), images:product_images(*), variants:product_variants(*)")
@@ -170,6 +232,35 @@ export async function getAdminProducts(search?: string) {
   return data || [];
 }
 
+export async function getAdminProductsPage(options?: {
+  search?: string;
+  page?: number;
+  perPage?: number;
+}) {
+  const supabase = await requireAdmin();
+  const page = Math.max(options?.page || 1, 1);
+  const perPage = options?.perPage || 20;
+  const from = (page - 1) * perPage;
+
+  let query = supabase
+    .from("products")
+    .select("*, category:categories(name), variants:product_variants(id)", { count: "exact" })
+    .order("created_at", { ascending: false })
+    .range(from, from + perPage - 1);
+
+  if (options?.search) {
+    query = query.ilike("name", `%${options.search}%`);
+  }
+
+  const { data, count } = await query;
+  return {
+    products: data || [],
+    total: count || 0,
+    page,
+    totalPages: Math.max(Math.ceil((count || 0) / perPage), 1),
+  };
+}
+
 export async function getAdminOrders(options?: {
   status?: string;
   search?: string;
@@ -177,7 +268,7 @@ export async function getAdminOrders(options?: {
   page?: number;
   perPage?: number;
 }) {
-  const supabase = await createClient();
+  const supabase = await requireAdmin();
   const page = options?.page || 1;
   const perPage = options?.perPage || 20;
   const from = (page - 1) * perPage;
@@ -189,6 +280,9 @@ export async function getAdminOrders(options?: {
 
   if (options?.status && options.status !== "all") {
     query = query.eq("status", options.status);
+  } else {
+    // Unpaid checkout attempts only show up under the "pending" filter.
+    query = query.neq("status", "pending");
   }
 
   if (options?.search) {
@@ -222,7 +316,7 @@ export async function getAdminOrders(options?: {
 }
 
 export async function getAdminOrderById(id: string) {
-  const supabase = await createClient();
+  const supabase = await requireAdmin();
   const { data } = await supabase
     .from("orders")
     .select("*, items:order_items(*), user:profiles(id, full_name, email, phone)")
@@ -232,7 +326,7 @@ export async function getAdminOrderById(id: string) {
 }
 
 export async function updateOrderStatus(id: string, status: string) {
-  const supabase = await createClient();
+  const supabase = await requireAdmin();
   const { error } = await supabase
     .from("orders")
     .update({ status })
@@ -242,7 +336,7 @@ export async function updateOrderStatus(id: string, status: string) {
 }
 
 export async function updateOrderNotes(id: string, notes: string) {
-  const supabase = await createClient();
+  const supabase = await requireAdmin();
   const { error } = await supabase
     .from("orders")
     .update({ notes })
@@ -255,7 +349,7 @@ export async function updateOrderTracking(
   id: string,
   data: { shipping_carrier: string; tracking_number: string }
 ) {
-  const supabase = await createClient();
+  const supabase = await requireAdmin();
   const { error } = await supabase
     .from("orders")
     .update({
@@ -270,7 +364,7 @@ export async function updateOrderTracking(
 }
 
 export async function markOrderDelivered(id: string) {
-  const supabase = await createClient();
+  const supabase = await requireAdmin();
   const { error } = await supabase
     .from("orders")
     .update({
@@ -283,7 +377,7 @@ export async function markOrderDelivered(id: string) {
 }
 
 export async function updateOrderAddress(id: string, address: Record<string, string>) {
-  const supabase = await createClient();
+  const supabase = await requireAdmin();
   const { error } = await supabase
     .from("orders")
     .update({ shipping_address: address })
@@ -296,7 +390,7 @@ export async function updateOrderAmounts(
   id: string,
   amounts: { subtotal: number; shipping_cost: number; tax: number; total: number }
 ) {
-  const supabase = await createClient();
+  const supabase = await requireAdmin();
   const { error } = await supabase
     .from("orders")
     .update(amounts)
@@ -306,7 +400,7 @@ export async function updateOrderAmounts(
 }
 
 export async function approveRefund(orderId: string) {
-  const supabase = await createClient();
+  const supabase = await requireAdmin();
 
   const { data: order } = await supabase
     .from("orders")
@@ -324,10 +418,7 @@ export async function approveRefund(orderId: string) {
       payment_intent: order.stripe_payment_intent_id,
     });
 
-    await supabase
-      .from("orders")
-      .update({ status: "refunded" })
-      .eq("id", orderId);
+    await markOrderRefunded(orderId);
 
     return { success: true };
   } catch (err: unknown) {
@@ -339,7 +430,7 @@ export async function approveRefund(orderId: string) {
 }
 
 export async function rejectRefund(orderId: string) {
-  const supabase = await createClient();
+  const supabase = await requireAdmin();
 
   const { data: order } = await supabase
     .from("orders")
@@ -360,7 +451,7 @@ export async function rejectRefund(orderId: string) {
 }
 
 export async function getAdminCustomers(search?: string) {
-  const supabase = await createClient();
+  const supabase = await requireAdmin();
 
   let query = supabase
     .from("profiles")
@@ -368,32 +459,39 @@ export async function getAdminCustomers(search?: string) {
     .eq("role", "customer")
     .order("created_at", { ascending: false });
 
-  if (search) {
-    query = query.or(`full_name.ilike.%${search}%,email.ilike.%${search}%`);
+  const term = search?.replace(/[,()%*\\"]/g, " ").trim();
+  if (term) {
+    query = query.or(`full_name.ilike.%${term}%,email.ilike.%${term}%`);
   }
 
   const { data: customers } = await query;
+  if (!customers || customers.length === 0) return [];
 
-  const enriched = await Promise.all(
-    (customers || []).map(async (customer) => {
-      const { data: orders } = await supabase
-        .from("orders")
-        .select("total")
-        .eq("user_id", customer.id);
+  const { data: orders } = await supabase
+    .from("orders")
+    .select("user_id, total, status")
+    .in("user_id", customers.map((c) => c.id))
+    .neq("status", "pending");
 
-      return {
-        ...customer,
-        order_count: orders?.length || 0,
-        total_spent: (orders || []).reduce((sum, o) => sum + Number(o.total), 0),
-      };
-    })
-  );
+  const totals = new Map<string, { count: number; spent: number }>();
+  for (const order of orders || []) {
+    const entry = totals.get(order.user_id) || { count: 0, spent: 0 };
+    entry.count += 1;
+    if ((PAID_ORDER_STATUSES as readonly string[]).includes(order.status)) {
+      entry.spent += Number(order.total);
+    }
+    totals.set(order.user_id, entry);
+  }
 
-  return enriched;
+  return customers.map((customer) => ({
+    ...customer,
+    order_count: totals.get(customer.id)?.count || 0,
+    total_spent: totals.get(customer.id)?.spent || 0,
+  }));
 }
 
 export async function getCustomerOrders(customerId: string) {
-  const supabase = await createClient();
+  const supabase = await requireAdmin();
 
   const { data: profile } = await supabase
     .from("profiles")
@@ -405,119 +503,134 @@ export async function getCustomerOrders(customerId: string) {
     .from("orders")
     .select("*, items:order_items(*)")
     .eq("user_id", customerId)
+    .neq("status", "pending")
     .order("created_at", { ascending: false });
 
   return { profile, orders: orders || [] };
 }
 
-export async function createProduct(formData: FormData) {
-  const supabase = await createClient();
+interface ImageInput {
+  url: string;
+  is_primary: boolean;
+  sort_order: number;
+}
 
-  const product = {
-    name: formData.get("name") as string,
-    slug: (formData.get("name") as string)
-      .toLowerCase()
-      .replace(/[^\w\s-]/g, "")
-      .replace(/\s+/g, "-"),
-    description: formData.get("description") as string,
-    category_id: (formData.get("category_id") as string) || null,
-    base_price: parseFloat(formData.get("base_price") as string),
-    compare_at_price: formData.get("compare_at_price")
-      ? parseFloat(formData.get("compare_at_price") as string)
-      : null,
+interface VariantInput {
+  id?: string;
+  size: string;
+  color: string;
+  sku: string;
+  price_override: string;
+  stock_quantity: string;
+  is_active: boolean;
+}
+
+function parseJsonList<T>(value: FormDataEntryValue | null): T[] | null {
+  if (typeof value !== "string" || !value) return null;
+  try {
+    const parsed = JSON.parse(value);
+    return Array.isArray(parsed) ? (parsed as T[]) : null;
+  } catch {
+    return null;
+  }
+}
+
+function productFields(formData: FormData) {
+  const basePrice = parseFloat(text(formData, "base_price"));
+  const comparePrice = parseFloat(text(formData, "compare_at_price"));
+  return {
+    name: text(formData, "name"),
+    name_vi: optionalText(formData, "name_vi"),
+    description: text(formData, "description"),
+    description_vi: optionalText(formData, "description_vi"),
+    category_id: optionalText(formData, "category_id"),
+    base_price: basePrice,
+    compare_at_price: Number.isFinite(comparePrice) && comparePrice > 0 ? comparePrice : null,
     is_active: formData.get("is_active") === "on",
     is_featured: formData.get("is_featured") === "on",
   };
+}
+
+function variantRow(productId: string, v: VariantInput) {
+  const price = parseFloat(v.price_override);
+  return {
+    product_id: productId,
+    size: v.size,
+    color: v.color.trim(),
+    sku: v.sku?.trim() || null,
+    price_override: Number.isFinite(price) && price > 0 ? price : null,
+    stock_quantity: Math.max(parseInt(v.stock_quantity, 10) || 0, 0),
+    is_active: Boolean(v.is_active),
+  };
+}
+
+export async function createProduct(formData: FormData) {
+  const supabase = await requireAdmin();
+
+  const fields = productFields(formData);
+  if (!fields.name) return { error: "Name is required" };
+  if (!Number.isFinite(fields.base_price) || fields.base_price < 0) {
+    return { error: "Invalid price" };
+  }
+
+  const slug = await uniqueSlug(supabase, "products", text(formData, "slug") || fields.name);
 
   const { data, error } = await supabase
     .from("products")
-    .insert(product)
+    .insert({ ...fields, slug })
     .select("id")
     .single();
 
-  if (error) return { error: error.message };
+  if (error || !data) return { error: error?.message || "Failed to create product" };
 
-  const imagesJson = formData.get("images") as string;
-  if (data && imagesJson) {
-    const images = JSON.parse(imagesJson) as Array<{
-      url: string;
-      is_primary: boolean;
-      sort_order: number;
-    }>;
-    if (images.length > 0) {
-      await supabase.from("product_images").insert(
-        images.map((img) => ({
-          product_id: data.id,
-          url: img.url,
-          is_primary: img.is_primary,
-          sort_order: img.sort_order,
-        }))
-      );
-    }
+  const images = parseJsonList<ImageInput>(formData.get("images")) || [];
+  if (images.length > 0) {
+    const { error: imageError } = await supabase.from("product_images").insert(
+      images.map((img) => ({
+        product_id: data.id,
+        url: img.url,
+        is_primary: img.is_primary,
+        sort_order: img.sort_order,
+      }))
+    );
+    if (imageError) return { error: imageError.message };
   }
 
-  const variantsJson = formData.get("variants") as string;
-  if (data && variantsJson) {
-    const variants = JSON.parse(variantsJson) as Array<{
-      size: string;
-      color: string;
-      sku: string;
-      price_override: string;
-      stock_quantity: string;
-      is_active: boolean;
-    }>;
-    if (variants.length > 0) {
-      await supabase.from("product_variants").insert(
-        variants.map((v) => ({
-          product_id: data.id,
-          size: v.size,
-          color: v.color,
-          sku: v.sku || null,
-          price_override: v.price_override ? parseFloat(v.price_override) : null,
-          stock_quantity: parseInt(v.stock_quantity) || 0,
-          is_active: v.is_active,
-        }))
-      );
-    }
+  const variants = parseJsonList<VariantInput>(formData.get("variants")) || [];
+  if (variants.length > 0) {
+    const { error: variantError } = await supabase
+      .from("product_variants")
+      .insert(variants.map((v) => variantRow(data.id, v)));
+    if (variantError) return { error: variantError.message };
   }
 
   redirect(`/admin/products`);
 }
 
 export async function updateProduct(id: string, formData: FormData) {
-  const supabase = await createClient();
+  const supabase = await requireAdmin();
 
-  const product = {
-    name: formData.get("name") as string,
-    description: formData.get("description") as string,
-    category_id: (formData.get("category_id") as string) || null,
-    base_price: parseFloat(formData.get("base_price") as string),
-    compare_at_price: formData.get("compare_at_price")
-      ? parseFloat(formData.get("compare_at_price") as string)
-      : null,
-    is_active: formData.get("is_active") === "on",
-    is_featured: formData.get("is_featured") === "on",
-  };
+  const fields = productFields(formData);
+  if (!fields.name) return { error: "Name is required" };
+  if (!Number.isFinite(fields.base_price) || fields.base_price < 0) {
+    return { error: "Invalid price" };
+  }
 
-  const { error } = await supabase
-    .from("products")
-    .update(product)
-    .eq("id", id);
+  const requestedSlug = text(formData, "slug");
+  const update: Record<string, unknown> = { ...fields };
+  if (requestedSlug) {
+    update.slug = await uniqueSlug(supabase, "products", requestedSlug, id);
+  }
 
+  const { error } = await supabase.from("products").update(update).eq("id", id);
   if (error) return { error: error.message };
 
-  const imagesJson = formData.get("images") as string;
-  if (imagesJson) {
-    const images = JSON.parse(imagesJson) as Array<{
-      url: string;
-      is_primary: boolean;
-      sort_order: number;
-    }>;
-
+  const images = parseJsonList<ImageInput>(formData.get("images"));
+  if (images) {
     await supabase.from("product_images").delete().eq("product_id", id);
 
     if (images.length > 0) {
-      await supabase.from("product_images").insert(
+      const { error: imageError } = await supabase.from("product_images").insert(
         images.map((img) => ({
           product_id: id,
           url: img.url,
@@ -525,34 +638,45 @@ export async function updateProduct(id: string, formData: FormData) {
           sort_order: img.sort_order,
         }))
       );
+      if (imageError) return { error: imageError.message };
     }
   }
 
-  const variantsJson = formData.get("variants") as string;
-  if (variantsJson) {
-    const variants = JSON.parse(variantsJson) as Array<{
-      size: string;
-      color: string;
-      sku: string;
-      price_override: string;
-      stock_quantity: string;
-      is_active: boolean;
-    }>;
+  // Variants are updated in place: orders and customers' carts reference
+  // variant ids, so they must survive an edit.
+  const variants = parseJsonList<VariantInput>(formData.get("variants"));
+  if (variants) {
+    const { data: existing } = await supabase
+      .from("product_variants")
+      .select("id")
+      .eq("product_id", id);
+    const existingIds = new Set((existing || []).map((v) => v.id as string));
+    const keptIds = new Set(
+      variants.map((v) => v.id).filter((vid): vid is string => !!vid && existingIds.has(vid))
+    );
 
-    await supabase.from("product_variants").delete().eq("product_id", id);
+    for (const removedId of existingIds) {
+      if (keptIds.has(removedId)) continue;
+      const { error: deleteError } = await supabase
+        .from("product_variants")
+        .delete()
+        .eq("id", removedId);
+      if (deleteError) {
+        // Already ordered, so it cannot be deleted: retire it instead.
+        await supabase
+          .from("product_variants")
+          .update({ is_active: false, stock_quantity: 0 })
+          .eq("id", removedId);
+      }
+    }
 
-    if (variants.length > 0) {
-      await supabase.from("product_variants").insert(
-        variants.map((v) => ({
-          product_id: id,
-          size: v.size,
-          color: v.color,
-          sku: v.sku || null,
-          price_override: v.price_override ? parseFloat(v.price_override) : null,
-          stock_quantity: parseInt(v.stock_quantity) || 0,
-          is_active: v.is_active,
-        }))
-      );
+    for (const v of variants) {
+      const row = variantRow(id, v);
+      const { error: variantError } =
+        v.id && existingIds.has(v.id)
+          ? await supabase.from("product_variants").update(row).eq("id", v.id)
+          : await supabase.from("product_variants").insert(row);
+      if (variantError) return { error: variantError.message };
     }
   }
 
@@ -560,14 +684,25 @@ export async function updateProduct(id: string, formData: FormData) {
 }
 
 export async function deleteProduct(id: string) {
-  const supabase = await createClient();
+  const supabase = await requireAdmin();
   const { error } = await supabase.from("products").delete().eq("id", id);
-  if (error) return { error: error.message };
+  if (error) {
+    if (error.code === "23503") {
+      // Has order history: take it off the storefront instead of deleting.
+      const { error: archiveError } = await supabase
+        .from("products")
+        .update({ is_active: false, is_featured: false })
+        .eq("id", id);
+      if (archiveError) return { error: archiveError.message };
+      return { success: true, archived: true };
+    }
+    return { error: error.message };
+  }
   return { success: true };
 }
 
 export async function getAdminCollections() {
-  const supabase = await createClient();
+  const supabase = await requireAdmin();
   const { data } = await supabase
     .from("collections")
     .select("*")
@@ -575,70 +710,81 @@ export async function getAdminCollections() {
   return data || [];
 }
 
-export async function createCollection(formData: FormData) {
-  const supabase = await createClient();
-  const collection = {
-    name: formData.get("name") as string,
-    slug: (formData.get("name") as string)
-      .toLowerCase()
-      .replace(/[^\w\s-]/g, "")
-      .replace(/\s+/g, "-"),
-    description: (formData.get("description") as string) || null,
-    image_url: (formData.get("image_url") as string) || null,
+function collectionFields(formData: FormData) {
+  return {
+    name: text(formData, "name"),
+    name_vi: optionalText(formData, "name_vi"),
+    description: optionalText(formData, "description"),
+    description_vi: optionalText(formData, "description_vi"),
+    image_url: optionalText(formData, "image_url"),
+    sort_order: intOrZero(formData, "sort_order"),
     is_active: formData.get("is_active") === "on",
   };
+}
 
-  const { error } = await supabase.from("collections").insert(collection);
+export async function createCollection(formData: FormData) {
+  const supabase = await requireAdmin();
+  const fields = collectionFields(formData);
+  if (!fields.name) return { error: "Name is required" };
+
+  const slug = await uniqueSlug(supabase, "collections", fields.name);
+  const { error } = await supabase.from("collections").insert({ ...fields, slug });
   if (error) return { error: error.message };
   return { success: true };
 }
 
 export async function updateCollection(id: string, formData: FormData) {
-  const supabase = await createClient();
-  const updates = {
-    name: formData.get("name") as string,
-    description: (formData.get("description") as string) || null,
-    image_url: (formData.get("image_url") as string) || null,
-    is_active: formData.get("is_active") === "on",
-  };
+  const supabase = await requireAdmin();
+  const fields = collectionFields(formData);
+  if (!fields.name) return { error: "Name is required" };
 
   const { error } = await supabase
     .from("collections")
-    .update(updates)
+    .update(fields)
     .eq("id", id);
   if (error) return { error: error.message };
   return { success: true };
 }
 
 export async function deleteCollection(id: string) {
-  const supabase = await createClient();
+  const supabase = await requireAdmin();
   const { error } = await supabase.from("collections").delete().eq("id", id);
   if (error) return { error: error.message };
   return { success: true };
 }
 
-export async function getCollectionProducts(collectionId: string) {
-  const supabase = await createClient();
+export async function getCollectionProductMap() {
+  const supabase = await requireAdmin();
   const { data } = await supabase
     .from("product_collections")
-    .select("product_id")
-    .eq("collection_id", collectionId);
-  return (data || []).map((r) => r.product_id);
+    .select("collection_id, product_id");
+
+  const map: Record<string, string[]> = {};
+  for (const row of data || []) {
+    (map[row.collection_id] ||= []).push(row.product_id);
+  }
+  return map;
 }
 
 export async function updateCollectionProducts(collectionId: string, productIds: string[]) {
-  const supabase = await createClient();
-  await supabase.from("product_collections").delete().eq("collection_id", collectionId);
+  const supabase = await requireAdmin();
+  const { error: deleteError } = await supabase
+    .from("product_collections")
+    .delete()
+    .eq("collection_id", collectionId);
+  if (deleteError) return { error: deleteError.message };
+
   if (productIds.length > 0) {
-    await supabase.from("product_collections").insert(
+    const { error } = await supabase.from("product_collections").insert(
       productIds.map((pid) => ({ collection_id: collectionId, product_id: pid }))
     );
+    if (error) return { error: error.message };
   }
   return { success: true };
 }
 
 export async function getAdminCategories() {
-  const supabase = await createClient();
+  const supabase = await requireAdmin();
   const { data } = await supabase
     .from("categories")
     .select("*")
@@ -646,82 +792,50 @@ export async function getAdminCategories() {
   return data || [];
 }
 
-export async function createCategory(formData: FormData) {
-  const supabase = await createClient();
-  const category = {
-    name: formData.get("name") as string,
-    slug: (formData.get("name") as string)
-      .toLowerCase()
-      .replace(/[^\w\s-]/g, "")
-      .replace(/\s+/g, "-"),
-    description: (formData.get("description") as string) || null,
-    parent_id: (formData.get("parent_id") as string) || null,
+function categoryFields(formData: FormData) {
+  return {
+    name: text(formData, "name"),
+    name_vi: optionalText(formData, "name_vi"),
+    description: optionalText(formData, "description"),
+    parent_id: optionalText(formData, "parent_id"),
+    sort_order: intOrZero(formData, "sort_order"),
   };
+}
 
-  const { error } = await supabase.from("categories").insert(category);
+export async function createCategory(formData: FormData) {
+  const supabase = await requireAdmin();
+  const fields = categoryFields(formData);
+  if (!fields.name) return { error: "Name is required" };
+
+  const slug = await uniqueSlug(supabase, "categories", fields.name);
+  const { error } = await supabase.from("categories").insert({ ...fields, slug });
   if (error) return { error: error.message };
   return { success: true };
 }
 
 export async function updateCategory(id: string, formData: FormData) {
-  const supabase = await createClient();
-  const updates = {
-    name: formData.get("name") as string,
-    description: (formData.get("description") as string) || null,
-    parent_id: (formData.get("parent_id") as string) || null,
-  };
+  const supabase = await requireAdmin();
+  const fields = categoryFields(formData);
+  if (!fields.name) return { error: "Name is required" };
+  if (fields.parent_id === id) fields.parent_id = null;
 
   const { error } = await supabase
     .from("categories")
-    .update(updates)
+    .update(fields)
     .eq("id", id);
   if (error) return { error: error.message };
   return { success: true };
 }
 
 export async function deleteCategory(id: string) {
-  const supabase = await createClient();
+  const supabase = await requireAdmin();
   const { error } = await supabase.from("categories").delete().eq("id", id);
   if (error) return { error: error.message };
   return { success: true };
 }
 
-export async function saveProductVariants(
-  productId: string,
-  variants: Array<{
-    id?: string;
-    size: string;
-    color: string;
-    sku?: string;
-    price_override?: number | null;
-    stock_quantity: number;
-    is_active: boolean;
-  }>
-) {
-  const supabase = await createClient();
-
-  await supabase.from("product_variants").delete().eq("product_id", productId);
-
-  if (variants.length > 0) {
-    const { error } = await supabase.from("product_variants").insert(
-      variants.map((v) => ({
-        product_id: productId,
-        size: v.size,
-        color: v.color,
-        sku: v.sku || null,
-        price_override: v.price_override || null,
-        stock_quantity: v.stock_quantity,
-        is_active: v.is_active,
-      }))
-    );
-    if (error) return { error: error.message };
-  }
-
-  return { success: true };
-}
-
 export async function getInventory() {
-  const supabase = await createClient();
+  const supabase = await requireAdmin();
   const { data } = await supabase
     .from("product_variants")
     .select("*, product:products(name, slug)")
@@ -730,11 +844,48 @@ export async function getInventory() {
 }
 
 export async function updateStock(variantId: string, quantity: number) {
-  const supabase = await createClient();
+  const supabase = await requireAdmin();
   const { error } = await supabase
     .from("product_variants")
-    .update({ stock_quantity: quantity })
+    .update({ stock_quantity: Math.max(Math.floor(quantity) || 0, 0) })
     .eq("id", variantId);
   if (error) return { error: error.message };
+  return { success: true };
+}
+
+export async function getAdminReviews() {
+  const supabase = await requireAdmin();
+  const { data } = await supabase
+    .from("reviews")
+    .select("*, product:products(name, slug), user:profiles(full_name, email)")
+    .order("created_at", { ascending: false });
+  return data || [];
+}
+
+export async function deleteReview(id: string) {
+  const supabase = await requireAdmin();
+  const { error } = await supabase.from("reviews").delete().eq("id", id);
+  if (error) return { error: error.message };
+  revalidatePath("/admin/reviews");
+  return { success: true };
+}
+
+export async function getNewsletterSubscribers() {
+  const supabase = await requireAdmin();
+  const { data } = await supabase
+    .from("newsletter_subscribers")
+    .select("id, email, created_at")
+    .order("created_at", { ascending: false });
+  return data || [];
+}
+
+export async function deleteNewsletterSubscriber(id: string) {
+  const supabase = await requireAdmin();
+  const { error } = await supabase
+    .from("newsletter_subscribers")
+    .delete()
+    .eq("id", id);
+  if (error) return { error: error.message };
+  revalidatePath("/admin/newsletter");
   return { success: true };
 }

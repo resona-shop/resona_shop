@@ -14,6 +14,8 @@ import {
   Settings,
   FolderTree,
   Warehouse,
+  Star,
+  Mail,
 } from "lucide-react";
 
 const navItems = [
@@ -24,6 +26,8 @@ const navItems = [
   { key: "nav.orders" as const, href: "/admin/orders", icon: ShoppingBag },
   { key: "nav.customers" as const, href: "/admin/customers", icon: Users },
   { key: "nav.collections" as const, href: "/admin/collections", icon: Layers },
+  { key: "nav.reviews" as const, href: "/admin/reviews", icon: Star },
+  { key: "nav.newsletter" as const, href: "/admin/newsletter", icon: Mail },
   { key: "nav.settings" as const, href: "/admin/settings", icon: Settings },
 ];
 

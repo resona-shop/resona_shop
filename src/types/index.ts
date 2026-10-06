@@ -8,6 +8,7 @@ export type OrderStatus =
   | "delivered"
   | "cancelled"
   | "refund_requested"
+  | "partially_refunded"
   | "refunded";
 
 export interface Profile {
@@ -26,6 +27,7 @@ export interface Category {
   id: string;
   name: string;
   slug: string;
+  name_vi?: string | null;
   description: string | null;
   image_url: string | null;
   parent_id: string | null;
@@ -37,7 +39,9 @@ export interface Collection {
   id: string;
   name: string;
   slug: string;
+  name_vi?: string | null;
   description: string | null;
+  description_vi?: string | null;
   image_url: string | null;
   is_active: boolean;
   sort_order: number;
@@ -48,7 +52,9 @@ export interface Product {
   id: string;
   name: string;
   slug: string;
+  name_vi?: string | null;
   description: string | null;
+  description_vi?: string | null;
   category_id: string | null;
   base_price: number;
   compare_at_price: number | null;
@@ -116,6 +122,10 @@ export interface Order {
   stripe_checkout_session_id: string | null;
   stripe_payment_intent_id: string | null;
   notes: string | null;
+  shipping_carrier?: string | null;
+  tracking_number?: string | null;
+  shipped_at?: string | null;
+  delivered_at?: string | null;
   created_at: string;
   updated_at: string;
   // Joined

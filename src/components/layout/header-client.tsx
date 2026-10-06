@@ -18,21 +18,23 @@ import { ChevronDown } from "lucide-react";
 export function HeaderClient({
   children,
   menuItems,
+  isSignedIn = false,
 }: {
   children?: React.ReactNode;
   menuItems: NavigationMenuItem[];
+  isSignedIn?: boolean;
 }) {
   const childItems = menuItems.filter((item) => item.parent_id);
   const topLevelItems = menuItems.filter((item) => !item.parent_id);
   const getChildren = (item: NavigationMenuItem) =>
-    childItems.filter((child) => child.parent_id === item.id || child.href.startsWith(`${item.href}/`));
+    childItems.filter((child) => child.parent_id === item.id);
 
   return (
     <header className="sticky top-0 z-50 border-y border-border/70 bg-background/95 backdrop-blur-xl">
       <div className="border-b border-border/70">
         <div className="mx-auto grid h-[70px] max-w-[1728px] grid-cols-[1fr_auto_1fr] items-center px-5 sm:px-8 lg:px-12">
           <div className="flex items-center justify-start">
-            <MobileNav />
+            <MobileNav menuItems={menuItems} isSignedIn={isSignedIn} />
             <div className="lg:hidden">
               <SearchDialog />
             </div>
@@ -76,9 +78,6 @@ export function HeaderClient({
                     className="flex h-full items-center gap-1 whitespace-nowrap text-[13px] font-medium tracking-[0.01em] text-foreground/75 transition-colors hover:text-foreground"
                   >
                     <span>{item.label}</span>
-                    {item.has_menu && (
-                      <ChevronDown className="h-3.5 w-3.5 opacity-70" />
-                    )}
                   </Link>
                 );
               }

@@ -13,14 +13,28 @@ export interface NavigationMenuItem {
 export const defaultNavigationMenuItems: NavigationMenuItem[] = [
   { label: "New Arrivals", href: "/collections/new-arrivals", has_menu: false, is_active: true, sort_order: 0 },
   { label: "Best Sellers", href: "/collections/best-sellers", has_menu: false, is_active: true, sort_order: 1 },
-  { label: "Dresses", href: "/collections/dresses", has_menu: true, is_active: true, sort_order: 2 },
-  { label: "Tops", href: "/collections/tops", has_menu: true, is_active: true, sort_order: 3 },
-  { label: "Bottoms", href: "/collections/bottoms", has_menu: true, is_active: true, sort_order: 4 },
-  { label: "Featured", href: "/products", has_menu: true, is_active: true, sort_order: 5 },
-  { label: "Collections", href: "/collections", has_menu: true, is_active: true, sort_order: 6 },
-  { label: "Accs", href: "/collections/accessories", has_menu: true, is_active: true, sort_order: 7 },
-  { label: "About Us", href: "/about", has_menu: false, is_active: true, sort_order: 8 },
-  { label: "Help", href: "/faq", has_menu: false, is_active: true, sort_order: 9 },
+  { label: "Dresses", href: "/products?category=dresses", has_menu: false, is_active: true, sort_order: 2 },
+  { label: "Tops", href: "/products?category=tops", has_menu: false, is_active: true, sort_order: 3 },
+  { label: "Bottoms", href: "/products?category=bottoms", has_menu: false, is_active: true, sort_order: 4 },
+  { label: "Shop All", href: "/products", has_menu: false, is_active: true, sort_order: 5 },
+  { label: "Collections", href: "/collections", has_menu: false, is_active: true, sort_order: 6 },
+  { label: "About Us", href: "/about", has_menu: false, is_active: true, sort_order: 7 },
+  { label: "Help", href: "/faq", has_menu: false, is_active: true, sort_order: 8 },
+];
+
+// Storefront pages that always exist, offered as link suggestions in the admin.
+export const staticStorefrontLinks = [
+  { label: "Home", href: "/" },
+  { label: "Shop All", href: "/products" },
+  { label: "Collections", href: "/collections" },
+  { label: "About", href: "/about" },
+  { label: "Our Story", href: "/story" },
+  { label: "Sustainability", href: "/sustainability" },
+  { label: "Careers", href: "/careers" },
+  { label: "FAQ", href: "/faq" },
+  { label: "Contact", href: "/contact" },
+  { label: "Shipping", href: "/shipping" },
+  { label: "Size Guide", href: "/size-guide" },
 ];
 
 export async function getNavigationMenuItems(options?: {
@@ -40,15 +54,5 @@ export async function getNavigationMenuItems(options?: {
     return defaultNavigationMenuItems;
   }
 
-  const items = data as NavigationMenuItem[];
-  return items.map((item) => {
-    if (item.parent_id) return item;
-    const inferredParent = items.find((candidate) =>
-      candidate.id &&
-      candidate.id !== item.id &&
-      !candidate.parent_id &&
-      item.href.startsWith(`${candidate.href}/`)
-    );
-    return inferredParent ? { ...item, parent_id: inferredParent.id } : item;
-  });
+  return data as NavigationMenuItem[];
 }

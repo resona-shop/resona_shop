@@ -1,18 +1,22 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Star } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { formatDate } from "@/lib/utils";
+import { useShopT } from "@/lib/shop-i18n";
+import { toast } from "sonner";
+import { BadgeCheck } from "lucide-react";
 
 interface Review {
   id: string;
   rating: number;
   title: string | null;
   body: string | null;
+  is_verified?: boolean;
   created_at: string;
   user: { full_name: string | null; avatar_url: string | null } | null;
 }
@@ -23,7 +27,8 @@ interface ProductReviewsProps {
 }
 
 export function ProductReviews({ productId, initialReviews }: ProductReviewsProps) {
-  const [reviews, setReviews] = useState(initialReviews);
+  const reviews = initialReviews;
+  const t = useShopT();
   const [showForm, setShowForm] = useState(false);
   const [rating, setRating] = useState(5);
   const [hoverRating, setHoverRating] = useState(0);
@@ -44,21 +49,25 @@ export function ProductReviews({ productId, initialReviews }: ProductReviewsProp
       body: formData,
     });
 
-    if (res.ok) {
-      const data = await res.json();
-      if (data.success) {
-        setShowForm(false);
-        window.location.reload();
-      }
-    }
+    const data = await res.json().catch(() => ({}));
     setSubmitting(false);
+    if (data.success) {
+      setShowForm(false);
+      window.location.reload();
+    } else if (data.code === "auth") {
+      toast.error(t("reviews.signInRequired"));
+    } else if (data.code === "duplicate") {
+      toast.error(t("reviews.alreadyReviewed"));
+    } else {
+      toast.error(t("reviews.error"));
+    }
   }
 
   return (
     <div className="mt-12 border-t border-border pt-8">
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h2 className="text-xl font-medium">Reviews</h2>
+          <h2 className="text-xl font-medium">{t("reviews.title")}</h2>
           {reviews.length > 0 && (
             <div className="flex items-center gap-2 mt-1">
               <div className="flex">
@@ -81,14 +90,14 @@ export function ProductReviews({ productId, initialReviews }: ProductReviewsProp
           onClick={() => setShowForm(!showForm)}
           className="border-primary/30 hover:bg-primary/5"
         >
-          Write a Review
+          {t("reviews.write")}
         </Button>
       </div>
 
       {showForm && (
         <form onSubmit={handleSubmit} className="bg-card rounded-xl shadow-warm-sm p-5 mb-6 space-y-4">
           <div>
-            <label className="text-sm font-medium mb-2 block">Rating</label>
+            <label className="text-sm font-medium mb-2 block">{t("reviews.rating")}</label>
             <div className="flex gap-1">
               {[1, 2, 3, 4, 5].map((s) => (
                 <button
@@ -110,26 +119,26 @@ export function ProductReviews({ productId, initialReviews }: ProductReviewsProp
             </div>
           </div>
           <div>
-            <label className="text-sm font-medium mb-1 block">Title</label>
-            <Input name="title" placeholder="Summary of your review" className="bg-background" />
+            <label className="text-sm font-medium mb-1 block">{t("reviews.reviewTitle")}</label>
+            <Input name="title" placeholder={t("reviews.reviewTitlePlaceholder")} className="bg-background" />
           </div>
           <div>
-            <label className="text-sm font-medium mb-1 block">Review</label>
-            <Textarea name="body" rows={3} placeholder="Share your experience..." className="bg-background" />
+            <label className="text-sm font-medium mb-1 block">{t("reviews.reviewBody")}</label>
+            <Textarea name="body" rows={3} placeholder={t("reviews.reviewBodyPlaceholder")} className="bg-background" />
           </div>
           <Button
             type="submit"
             disabled={submitting}
             className="bg-gradient-golden text-white hover:opacity-90"
           >
-            {submitting ? "Submitting..." : "Submit Review"}
+            {submitting ? t("reviews.submitting") : t("reviews.submit")}
           </Button>
         </form>
       )}
 
       {reviews.length === 0 && !showForm && (
         <p className="text-muted-foreground text-center py-8">
-          No reviews yet. Be the first to share your experience.
+          {t("reviews.empty")}
         </p>
       )}
 
@@ -150,7 +159,15 @@ export function ProductReviews({ productId, initialReviews }: ProductReviewsProp
                     </AvatarFallback>
                   </Avatar>
                   <div>
-                    <p className="text-sm font-medium">{review.user?.full_name || "Anonymous"}</p>
+                    <p className="text-sm font-medium flex items-center gap-1.5">
+                      {review.user?.full_name || t("reviews.anonymous")}
+                      {review.is_verified && (
+                        <span className="inline-flex items-center gap-0.5 text-[11px] font-normal text-emerald-soft">
+                          <BadgeCheck className="h-3 w-3" />
+                          {t("reviews.verified")}
+                        </span>
+                      )}
+                    </p>
                     <div className="flex mt-0.5">
                       {[1, 2, 3, 4, 5].map((s) => (
                         <Star

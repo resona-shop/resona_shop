@@ -1,6 +1,8 @@
 "use client";
 
-import { useT, useAdminLocale } from "@/lib/admin-i18n";
+import { useT } from "@/lib/admin-i18n";
+import { toast } from "sonner";
+import { useRouter } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
@@ -21,13 +23,34 @@ interface Product {
 export function ProductsContent({
   products,
   searchQuery,
+  page = 1,
+  totalPages = 1,
   onDelete,
 }: {
   products: Product[];
   searchQuery?: string;
-  onDelete: (id: string) => Promise<void>;
+  page?: number;
+  totalPages?: number;
+  onDelete: (id: string) => Promise<{ error?: string; archived?: boolean; success?: boolean }>;
 }) {
   const t = useT();
+  const router = useRouter();
+
+  async function handleDelete(id: string) {
+    if (!confirm(t("products.deleteConfirm"))) return;
+    const result = await onDelete(id);
+    if (result.error) toast.error(result.error);
+    else if (result.archived) toast.info(t("products.archived"));
+    router.refresh();
+  }
+
+  function pageHref(target: number) {
+    const params = new URLSearchParams();
+    if (searchQuery) params.set("q", searchQuery);
+    if (target > 1) params.set("page", String(target));
+    const qs = params.toString();
+    return `/admin/products${qs ? `?${qs}` : ""}`;
+  }
 
   return (
     <div className="space-y-6">
@@ -101,7 +124,7 @@ export function ProductsContent({
                       {t("products.edit")}
                     </Link>
                     <button
-                      onClick={() => onDelete(product.id)}
+                      onClick={() => handleDelete(product.id)}
                       className="text-xs text-destructive hover:underline"
                     >
                       {t("products.delete")}
@@ -120,6 +143,26 @@ export function ProductsContent({
           </tbody>
         </table>
       </div>
+
+      {totalPages > 1 && (
+        <div className="flex items-center justify-between text-sm">
+          <p className="text-muted-foreground">
+            {t("orders.page")} {page} {t("orders.of")} {totalPages}
+          </p>
+          <div className="flex items-center gap-2">
+            {page > 1 && (
+              <Link href={pageHref(page - 1)} className="px-3 py-1.5 rounded-lg border border-input bg-background hover:bg-muted/50 transition-colors">
+                {t("orders.prev")}
+              </Link>
+            )}
+            {page < totalPages && (
+              <Link href={pageHref(page + 1)} className="px-3 py-1.5 rounded-lg border border-input bg-background hover:bg-muted/50 transition-colors">
+                {t("orders.next")}
+              </Link>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

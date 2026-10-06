@@ -1,12 +1,12 @@
-import { getUser } from "@/actions/auth";
 import { signOut } from "@/actions/auth";
+import { getCurrentProfile, getCurrentUser } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
 import { User } from "lucide-react";
 import Link from "next/link";
 import { UserMenuClient } from "./user-menu-client";
 
 export async function UserMenu() {
-  const user = await getUser();
+  const user = await getCurrentUser();
 
   if (!user) {
     return (
@@ -18,7 +18,9 @@ export async function UserMenu() {
     );
   }
 
-  const fullName = (user.user_metadata?.full_name as string) || "User";
+  const profile = await getCurrentProfile();
+  const fullName =
+    profile?.full_name || (user.user_metadata?.full_name as string) || "User";
   const initials = fullName
     .split(" ")
     .map((n: string) => n[0])
@@ -30,6 +32,7 @@ export async function UserMenu() {
       fullName={fullName}
       email={user.email || ""}
       initials={initials}
+      isAdmin={profile?.role === "admin"}
       signOutAction={signOut}
     />
   );

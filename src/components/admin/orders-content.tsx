@@ -15,6 +15,7 @@ const STATUS_COLORS: Record<string, string> = {
   delivered: "bg-green-100 text-green-800",
   cancelled: "bg-red-100 text-red-800",
   refund_requested: "bg-orange-100 text-orange-800",
+  partially_refunded: "bg-yellow-100 text-yellow-800",
   refunded: "bg-gray-100 text-gray-800",
 };
 
@@ -51,7 +52,7 @@ export function OrdersContent({
   const [search, setSearch] = useState(searchQuery || "");
 
   const statuses = [
-    "all", "pending", "confirmed", "processing", "shipped", "delivered", "cancelled", "refund_requested", "refunded",
+    "all", "pending", "confirmed", "processing", "shipped", "delivered", "cancelled", "refund_requested", "partially_refunded", "refunded",
   ];
 
   function buildUrl(overrides: Record<string, string | number | undefined>) {

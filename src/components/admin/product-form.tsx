@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useCallback } from "react";
+import { toast } from "sonner";
 import type { Category, Product } from "@/types";
 import { useT } from "@/lib/admin-i18n";
 import { Button } from "@/components/ui/button";
@@ -20,6 +21,7 @@ interface ImageItem {
 }
 
 interface VariantItem {
+  id?: string;
   size: string;
   color: string;
   sku: string;
@@ -36,8 +38,8 @@ interface ProductFormProps {
 
 export function ProductForm({ categories, product, action }: ProductFormProps) {
   const [loading, setLoading] = useState(false);
-  const [images, setImages] = useState<ImageItem[]>([]);
-  const [variants, setVariants] = useState<VariantItem[]>([]);
+  const [images, setImages] = useState<ImageItem[] | null>(null);
+  const [variants, setVariants] = useState<VariantItem[] | null>(null);
   const t = useT();
 
   const handleImagesChange = useCallback((newImages: ImageItem[]) => {
@@ -50,10 +52,12 @@ export function ProductForm({ categories, product, action }: ProductFormProps) {
 
   async function handleSubmit(formData: FormData) {
     setLoading(true);
-    formData.set("images", JSON.stringify(images));
-    formData.set("variants", JSON.stringify(variants));
-    await action(formData);
+    // Untouched sections are left out so the server keeps them as they are.
+    if (images) formData.set("images", JSON.stringify(images));
+    if (variants) formData.set("variants", JSON.stringify(variants));
+    const result = await action(formData);
     setLoading(false);
+    if (result?.error) toast.error(result.error);
   }
 
   return (
@@ -70,12 +74,47 @@ export function ProductForm({ categories, product, action }: ProductFormProps) {
       </div>
 
       <div className="space-y-2">
+        <Label htmlFor="slug">{t("form.slug")}</Label>
+        <Input
+          id="slug"
+          name="slug"
+          defaultValue={product?.slug || ""}
+          placeholder={t("form.optional")}
+          className="bg-background font-mono text-sm"
+        />
+        <p className="text-xs text-muted-foreground">{t("form.slugHint")}</p>
+      </div>
+
+      <div className="space-y-2">
         <Label htmlFor="description">{t("form.description")}</Label>
         <Textarea
           id="description"
           name="description"
           rows={4}
           defaultValue={product?.description || ""}
+          className="bg-background"
+        />
+      </div>
+
+      <div className="space-y-2">
+        <Label htmlFor="name_vi">{t("form.nameVi")}</Label>
+        <Input
+          id="name_vi"
+          name="name_vi"
+          defaultValue={product?.name_vi || ""}
+          placeholder={t("form.optional")}
+          className="bg-background"
+        />
+      </div>
+
+      <div className="space-y-2">
+        <Label htmlFor="description_vi">{t("form.descriptionVi")}</Label>
+        <Textarea
+          id="description_vi"
+          name="description_vi"
+          rows={3}
+          defaultValue={product?.description_vi || ""}
+          placeholder={t("form.optional")}
           className="bg-background"
         />
       </div>

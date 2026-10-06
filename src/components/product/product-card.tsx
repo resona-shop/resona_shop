@@ -20,7 +20,11 @@ export function ProductCard({ product }: ProductCardProps) {
   const [added, setAdded] = useState(false);
   const primaryImage = product.images?.find((img) => img.is_primary) || product.images?.[0];
   const secondImage = product.images?.find((img) => !img.is_primary && img.sort_order === 1);
-  const firstVariant = product.variants?.[0];
+  // Quick add must never put a sold-out size in the cart.
+  const firstVariant = product.variants?.find(
+    (v) => v.is_active !== false && v.stock_quantity > 0
+  );
+  const soldOut = (product.variants?.length || 0) > 0 && !firstVariant;
 
   function handleQuickAdd(e: React.MouseEvent) {
     e.preventDefault();
@@ -58,11 +62,15 @@ export function ProductCard({ product }: ProductCardProps) {
           <div className="absolute inset-0 shimmer" />
         )}
 
-        {product.compare_at_price && (
+        {soldOut ? (
+          <span className="absolute top-3 left-3 bg-foreground/80 text-background text-xs font-bold px-2 py-1 rounded-md">
+            {t("products.soldOut")}
+          </span>
+        ) : product.compare_at_price ? (
           <span className="absolute top-3 left-3 bg-primary text-primary-foreground text-xs font-bold px-2 py-1 rounded-md">
             {t("products.sale")}
           </span>
-        )}
+        ) : null}
 
         {firstVariant && (
           <div className="absolute bottom-3 left-3 right-3 opacity-0 group-hover:opacity-100 translate-y-2 group-hover:translate-y-0 transition-all duration-300">
@@ -91,7 +99,7 @@ export function ProductCard({ product }: ProductCardProps) {
       </div>
 
       <h3 className="text-sm font-medium group-hover:text-primary transition-colors line-clamp-1">
-        {pt.name(product.slug, product.name)}
+        {pt.name(product.slug, product.name, product.name_vi)}
       </h3>
       <div className="flex items-center gap-2 mt-0.5">
         <p className="text-sm text-foreground font-medium">

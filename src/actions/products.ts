@@ -41,8 +41,12 @@ export async function getProducts(options?: {
     }
   }
 
-  if (options?.search) {
-    query = query.ilike("name", `%${options.search}%`);
+  // Strip characters that have meaning in PostgREST filter syntax.
+  const term = options?.search?.replace(/[,()%*\\"]/g, " ").trim();
+  if (term) {
+    query = query.or(
+      `name.ilike.%${term}%,description.ilike.%${term}%,name_vi.ilike.%${term}%`
+    );
   }
 
   switch (options?.sort) {
@@ -60,14 +64,8 @@ export async function getProducts(options?: {
   }
 
   if (options?.limit) {
-    query = query.limit(options.limit);
-  }
-
-  if (options?.offset) {
-    query = query.range(
-      options.offset,
-      options.offset + (options.limit || 12) - 1
-    );
+    const offset = options.offset || 0;
+    query = query.range(offset, offset + options.limit - 1);
   }
 
   const { data, count, error } = await query;

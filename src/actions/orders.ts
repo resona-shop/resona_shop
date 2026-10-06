@@ -1,6 +1,6 @@
 "use server";
 
-import { createClient } from "@/lib/supabase/server";
+import { createClient, createServiceClient } from "@/lib/supabase/server";
 import type { Order } from "@/types";
 
 export async function getUserOrders() {
@@ -15,6 +15,7 @@ export async function getUserOrders() {
     .from("orders")
     .select("*, items:order_items(*)")
     .eq("user_id", user.id)
+    .neq("status", "pending")
     .order("created_at", { ascending: false });
 
   return (data || []) as Order[];
@@ -84,7 +85,16 @@ export async function addAddress(formData: FormData) {
 
 export async function deleteAddress(id: string) {
   const supabase = await createClient();
-  const { error } = await supabase.from("addresses").delete().eq("id", id);
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { error: "Not authenticated" };
+
+  const { error } = await supabase
+    .from("addresses")
+    .delete()
+    .eq("id", id)
+    .eq("user_id", user.id);
   if (error) return { error: error.message };
   return { success: true };
 }
@@ -119,24 +129,19 @@ export async function requestRefund(orderId: string) {
 
   if (!user) return { error: "Not authenticated" };
 
-  const { data: order } = await supabase
-    .from("orders")
-    .select("id, status, user_id")
-    .eq("id", orderId)
-    .eq("user_id", user.id)
-    .single();
-
-  if (!order) return { error: "Order not found" };
-
-  if (!["confirmed", "processing"].includes(order.status)) {
-    return { error: "This order cannot be refunded" };
-  }
-
-  const { error } = await supabase
+  // Customers have no UPDATE rights on orders, so the transition runs with
+  // the service role, scoped to this user's own refundable order.
+  const service = await createServiceClient();
+  const { data: updated, error } = await service
     .from("orders")
     .update({ status: "refund_requested" })
-    .eq("id", orderId);
+    .eq("id", orderId)
+    .eq("user_id", user.id)
+    .in("status", ["confirmed", "processing"])
+    .select("id")
+    .maybeSingle();
 
   if (error) return { error: error.message };
+  if (!updated) return { error: "This order cannot be refunded" };
   return { success: true };
 }

@@ -6,9 +6,10 @@ import { Loader2 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useShopT } from "@/lib/shop-i18n";
+import { toast } from "sonner";
 
 export default function CheckoutPage() {
-  const { items, subtotal } = useCart();
+  const { items, subtotal, removeItem } = useCart();
   const [loading, setLoading] = useState(false);
   const [mounted, setMounted] = useState(false);
   const router = useRouter();
@@ -16,22 +17,17 @@ export default function CheckoutPage() {
 
   useEffect(() => setMounted(true), []);
 
+  useEffect(() => {
+    if (mounted && items.length === 0) router.push("/cart");
+  }, [mounted, items.length, router]);
+
   async function handleCheckout() {
     setLoading(true);
-    const checkoutItems = items.map((item) => {
-      const primaryImage =
-        item.product.images?.find((img) => img.is_primary) ||
-        item.product.images?.[0];
-      return {
-        product_id: item.product_id,
-        variant_id: item.variant_id,
-        name: item.product.name,
-        price: item.variant.price_override ?? item.product.base_price,
-        quantity: item.quantity,
-        image: primaryImage?.url,
-        variant_label: `${item.variant.color} / ${item.variant.size}`,
-      };
-    });
+    // Prices are looked up server-side; only ids and quantities are sent.
+    const checkoutItems = items.map((item) => ({
+      variant_id: item.variant_id,
+      quantity: item.quantity,
+    }));
 
     try {
       const res = await fetch("/api/stripe/checkout", {
@@ -42,12 +38,18 @@ export default function CheckoutPage() {
       const data = await res.json();
       if (data.url) {
         window.location.href = data.url;
-      } else {
-        setLoading(false);
+        return;
+      }
+      toast.error(
+        data.code === "unavailable" ? t("checkout.unavailable") : t("checkout.error")
+      );
+      if (data.code === "unavailable" && Array.isArray(data.unavailable)) {
+        data.unavailable.forEach((variantId: string) => removeItem(variantId));
       }
     } catch {
-      setLoading(false);
+      toast.error(t("checkout.error"));
     }
+    setLoading(false);
   }
 
   if (!mounted) {
@@ -59,7 +61,6 @@ export default function CheckoutPage() {
   }
 
   if (items.length === 0) {
-    router.push("/cart");
     return null;
   }
 

@@ -2,6 +2,7 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
+import { getCurrentProfile, getCurrentUser, safeRedirectPath } from "@/lib/auth";
 
 export async function signUp(formData: FormData) {
   const supabase = await createClient();
@@ -41,7 +42,7 @@ export async function signIn(formData: FormData) {
     return { error: error.message };
   }
 
-  redirect(redirectTo || "/");
+  redirect(safeRedirectPath(redirectTo));
 }
 
 export async function resetPassword(formData: FormData) {
@@ -79,26 +80,9 @@ export async function signOut() {
 }
 
 export async function getUser() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  return user;
+  return getCurrentUser();
 }
 
 export async function getProfile() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) return null;
-
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("*")
-    .eq("id", user.id)
-    .single();
-
-  return profile;
+  return getCurrentProfile();
 }

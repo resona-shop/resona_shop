@@ -11,8 +11,10 @@ interface Category {
   id: string;
   name: string;
   slug: string;
+  name_vi?: string | null;
   description: string | null;
   parent_id: string | null;
+  sort_order?: number;
 }
 
 export function CategoriesContent({
@@ -51,7 +53,7 @@ export function CategoriesContent({
               {t("categories.edit")}
             </button>
             <button
-              onClick={() => onDelete(cat.id)}
+              onClick={() => { if (confirm(t("common.confirmDelete"))) onDelete(cat.id); }}
               className="text-xs text-destructive hover:underline inline-flex items-center gap-1"
             >
               <Trash2 className="h-3 w-3" />
@@ -104,6 +106,7 @@ export function CategoriesContent({
             </button>
           </div>
           <form
+            key={editingItem.id}
             action={async (formData) => {
               await onUpdate(editingItem.id, formData);
               setEditingId(null);
@@ -115,8 +118,16 @@ export function CategoriesContent({
               <Input id="edit-name" name="name" required defaultValue={editingItem.name} className="bg-background" />
             </div>
             <div className="space-y-2">
+              <Label htmlFor="edit-name_vi">{t("form.nameVi")}</Label>
+              <Input id="edit-name_vi" name="name_vi" defaultValue={editingItem.name_vi || ""} placeholder={t("form.optional")} className="bg-background" />
+            </div>
+            <div className="space-y-2">
               <Label htmlFor="edit-description">{t("form.description")}</Label>
               <Input id="edit-description" name="description" defaultValue={editingItem.description || ""} className="bg-background" />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="edit-sort_order">{t("form.sortOrder")}</Label>
+              <Input id="edit-sort_order" name="sort_order" type="number" defaultValue={editingItem.sort_order ?? 0} className="bg-background" />
             </div>
             <div className="space-y-2">
               <Label htmlFor="edit-parent_id">{t("categories.parent")}</Label>
@@ -151,8 +162,16 @@ export function CategoriesContent({
               <Input id="name" name="name" required className="bg-background" />
             </div>
             <div className="space-y-2">
+              <Label htmlFor="name_vi">{t("form.nameVi")}</Label>
+              <Input id="name_vi" name="name_vi" placeholder={t("form.optional")} className="bg-background" />
+            </div>
+            <div className="space-y-2">
               <Label htmlFor="description">{t("form.description")}</Label>
               <Input id="description" name="description" className="bg-background" />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="sort_order">{t("form.sortOrder")}</Label>
+              <Input id="sort_order" name="sort_order" type="number" defaultValue={categories.length} className="bg-background" />
             </div>
             <div className="space-y-2">
               <Label htmlFor="parent_id">{t("categories.parent")}</Label>

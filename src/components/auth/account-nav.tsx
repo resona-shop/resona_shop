@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { User, Package, MapPin, Settings } from "lucide-react";
+import { User, Package, MapPin, Settings, Heart } from "lucide-react";
 import { useShopT } from "@/lib/shop-i18n";
 
 export function AccountNav() {
@@ -10,6 +10,7 @@ export function AccountNav() {
   const accountNav = [
     { label: t("account.overview"), href: "/account", icon: User },
     { label: t("account.orders"), href: "/account/orders", icon: Package },
+    { label: t("account.wishlist"), href: "/account/wishlist", icon: Heart },
     { label: t("account.addresses"), href: "/account/addresses", icon: MapPin },
     { label: t("account.settings"), href: "/account/settings", icon: Settings },
   ];

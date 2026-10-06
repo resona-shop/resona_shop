@@ -7,7 +7,8 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { requestRefund } from "@/actions/orders";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Loader2, MapPin } from "lucide-react";
+import { ArrowLeft, Loader2, MapPin, Truck } from "lucide-react";
+import { formatDate } from "@/lib/utils";
 import type { Order } from "@/types";
 
 const STATUS_COLORS: Record<string, string> = {
@@ -18,6 +19,7 @@ const STATUS_COLORS: Record<string, string> = {
   delivered: "bg-green-100 text-green-800",
   cancelled: "bg-red-100 text-red-800",
   refund_requested: "bg-orange-100 text-orange-800",
+  partially_refunded: "bg-yellow-100 text-yellow-800",
   refunded: "bg-gray-100 text-gray-800",
 };
 
@@ -125,6 +127,38 @@ export function AccountOrderDetail({ order }: { order: Order }) {
                 {addr.state && `, ${addr.state}`} {addr.postal_code}
               </p>
               {addr.country && <p>{addr.country}</p>}
+            </div>
+          </div>
+        )}
+
+        {/* Tracking */}
+        {(order.tracking_number || order.shipping_carrier) && (
+          <div className="bg-card rounded-xl shadow-warm-sm p-5">
+            <h3 className="font-medium mb-3 flex items-center gap-2">
+              <Truck className="h-4 w-4 text-muted-foreground" />
+              {t("account.tracking")}
+            </h3>
+            <div className="grid grid-cols-2 gap-4 text-sm">
+              <div>
+                <p className="text-muted-foreground">{t("account.carrier")}</p>
+                <p className="font-medium">{order.shipping_carrier || "—"}</p>
+              </div>
+              <div>
+                <p className="text-muted-foreground">{t("account.trackingNumber")}</p>
+                <p className="font-mono font-medium break-all">{order.tracking_number || "—"}</p>
+              </div>
+              {order.shipped_at && (
+                <div>
+                  <p className="text-muted-foreground">{t("account.shippedOn")}</p>
+                  <p className="font-medium">{formatDate(order.shipped_at)}</p>
+                </div>
+              )}
+              {order.delivered_at && (
+                <div>
+                  <p className="text-muted-foreground">{t("account.deliveredOn")}</p>
+                  <p className="font-medium">{formatDate(order.delivered_at)}</p>
+                </div>
+              )}
             </div>
           </div>
         )}

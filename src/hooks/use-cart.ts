@@ -20,6 +20,7 @@ export const useCart = create<CartState>()(
       items: [],
 
       addItem: (product, variant, quantity = 1) => {
+        const max = Math.max(variant.stock_quantity, 1);
         set((state) => {
           const existing = state.items.find(
             (item) => item.variant_id === variant.id
@@ -29,7 +30,7 @@ export const useCart = create<CartState>()(
             return {
               items: state.items.map((item) =>
                 item.variant_id === variant.id
-                  ? { ...item, quantity: item.quantity + quantity }
+                  ? { ...item, quantity: Math.min(item.quantity + quantity, max) }
                   : item
               ),
             };
@@ -41,7 +42,7 @@ export const useCart = create<CartState>()(
               {
                 product_id: product.id,
                 variant_id: variant.id,
-                quantity,
+                quantity: Math.min(quantity, max),
                 product,
                 variant,
               },
@@ -63,7 +64,9 @@ export const useCart = create<CartState>()(
         }
         set((state) => ({
           items: state.items.map((item) =>
-            item.variant_id === variantId ? { ...item, quantity } : item
+            item.variant_id === variantId
+              ? { ...item, quantity: Math.min(quantity, Math.max(item.variant.stock_quantity, 1)) }
+              : item
           ),
         }));
       },

@@ -1,7 +1,7 @@
 import {
   getAdminCollections,
   getAdminProducts,
-  getCollectionProducts,
+  getCollectionProductMap,
   createCollection,
   updateCollection,
   deleteCollection,
@@ -16,15 +16,11 @@ export const metadata: Metadata = {
 };
 
 export default async function AdminCollectionsPage() {
-  const [collections, products] = await Promise.all([
+  const [collections, products, collectionProductMap] = await Promise.all([
     getAdminCollections(),
     getAdminProducts(),
+    getCollectionProductMap(),
   ]);
-
-  const collectionProductMap: Record<string, string[]> = {};
-  for (const col of collections) {
-    collectionProductMap[col.id] = await getCollectionProducts(col.id);
-  }
 
   const allProducts = products.map((p) => ({ id: p.id, name: p.name }));
 

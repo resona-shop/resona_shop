@@ -383,6 +383,27 @@ const dict = {
   "careers.openPositions": { en: "Open Positions", vi: "Vị Trí Tuyển Dụng" },
   "careers.noPositions": { en: "No open positions at the moment, but we're always looking for talented people.", vi: "Hiện chưa có vị trí tuyển dụng, nhưng chúng tôi luôn tìm kiếm người tài năng." },
   "careers.cta": { en: "Send your portfolio or resume to careers@resona.com and tell us why you'd be a great fit.", vi: "Gửi portfolio hoặc CV đến careers@resona.com và cho chúng tôi biết tại sao bạn phù hợp." },
+
+  // Added: navigation, account, reviews, stock
+  "user.admin": { en: "Admin Dashboard", vi: "Trang Quản Trị" },
+  "status.partially_refunded": { en: "Partially Refunded", vi: "Hoàn Tiền Một Phần" },
+  "account.tracking": { en: "Shipping & Tracking", vi: "Vận Chuyển & Theo Dõi" },
+  "account.carrier": { en: "Carrier", vi: "Đơn Vị Vận Chuyển" },
+  "account.trackingNumber": { en: "Tracking Number", vi: "Mã Vận Đơn" },
+  "account.shippedOn": { en: "Shipped on", vi: "Ngày gửi" },
+  "account.deliveredOn": { en: "Delivered on", vi: "Ngày giao" },
+  "account.wishlistEmpty": { en: "Your wishlist is empty.", vi: "Danh sách yêu thích đang trống." },
+  "products.soldOut": { en: "Sold Out", vi: "Hết Hàng" },
+  "products.prev": { en: "Previous", vi: "Trước" },
+  "products.next": { en: "Next", vi: "Sau" },
+  "products.page": { en: "Page", vi: "Trang" },
+  "checkout.unavailable": { en: "Some items are out of stock or no longer available. Please review your cart.", vi: "Một số sản phẩm đã hết hàng hoặc không còn bán. Vui lòng kiểm tra giỏ hàng." },
+  "checkout.error": { en: "Could not start checkout. Please try again.", vi: "Không thể bắt đầu thanh toán. Vui lòng thử lại." },
+  "reviews.anonymous": { en: "Anonymous", vi: "Ẩn danh" },
+  "reviews.verified": { en: "Verified purchase", vi: "Đã mua hàng" },
+  "reviews.signInRequired": { en: "Please sign in to write a review.", vi: "Vui lòng đăng nhập để viết đánh giá." },
+  "reviews.alreadyReviewed": { en: "You have already reviewed this product.", vi: "Bạn đã đánh giá sản phẩm này." },
+  "reviews.error": { en: "Could not submit your review.", vi: "Không thể gửi đánh giá." },
 } as const;
 
 type DictKey = keyof typeof dict;
@@ -396,7 +417,8 @@ export function useProductT() {
   const locale = useShopLocale((s) => s.locale);
 
   return {
-    name: (slug: string, fallback: string) => {
+    name: (slug: string, fallback: string, vi?: string | null) => {
+      if (locale === "vi" && vi) return vi;
       const key = `product.${slug}.name` as DictKey;
       if (key in dict) {
         const val = dict[key][locale];
@@ -404,7 +426,8 @@ export function useProductT() {
       }
       return fallback;
     },
-    desc: (slug: string, fallback: string | null) => {
+    desc: (slug: string, fallback: string | null, vi?: string | null) => {
+      if (locale === "vi" && vi) return vi;
       if (!fallback && locale === "en") return fallback;
       const key = `product.${slug}.desc` as DictKey;
       if (key in dict) {
@@ -419,12 +442,14 @@ export function useProductT() {
 export function useCollectionT() {
   const locale = useShopLocale((s) => s.locale);
   return {
-    name: (slug: string, fallback: string) => {
+    name: (slug: string, fallback: string, vi?: string | null) => {
+      if (locale === "vi" && vi) return vi;
       const key = `collection.${slug}.name` as DictKey;
       if (key in dict) return dict[key][locale] || fallback;
       return fallback;
     },
-    desc: (slug: string, fallback: string | null) => {
+    desc: (slug: string, fallback: string | null, vi?: string | null) => {
+      if (locale === "vi" && vi) return vi;
       const key = `collection.${slug}.desc` as DictKey;
       if (key in dict) return dict[key][locale] || fallback;
       return fallback;
@@ -434,7 +459,8 @@ export function useCollectionT() {
 
 export function useCategoryT() {
   const locale = useShopLocale((s) => s.locale);
-  return (slug: string, fallback: string) => {
+  return (slug: string, fallback: string, vi?: string | null) => {
+    if (locale === "vi" && vi) return vi;
     const key = `category.${slug}.name` as DictKey;
     if (key in dict) return dict[key][locale] || fallback;
     return fallback;

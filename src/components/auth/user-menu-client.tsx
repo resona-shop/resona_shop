@@ -1,7 +1,7 @@
 "use client";
 
 import { useShopT } from "@/lib/shop-i18n";
-import { User, Package, MapPin, Settings, LogOut } from "lucide-react";
+import { User, Package, MapPin, Settings, LogOut, Heart, LayoutDashboard } from "lucide-react";
 import Link from "next/link";
 import {
   DropdownMenu,
@@ -15,10 +15,11 @@ interface UserMenuClientProps {
   fullName: string;
   email: string;
   initials: string;
+  isAdmin?: boolean;
   signOutAction: () => Promise<void>;
 }
 
-export function UserMenuClient({ fullName, email, initials, signOutAction }: UserMenuClientProps) {
+export function UserMenuClient({ fullName, email, initials, isAdmin, signOutAction }: UserMenuClientProps) {
   const t = useShopT();
 
   return (
@@ -36,6 +37,12 @@ export function UserMenuClient({ fullName, email, initials, signOutAction }: Use
           <p className="text-xs text-muted-foreground truncate">{email}</p>
         </div>
         <DropdownMenuSeparator />
+        {isAdmin && (
+          <Link href="/admin" className="flex items-center gap-1.5 rounded-md px-1.5 py-1 text-sm hover:bg-accent hover:text-accent-foreground cursor-pointer">
+            <LayoutDashboard className="h-4 w-4" />
+            {t("user.admin")}
+          </Link>
+        )}
         <Link href="/account" className="flex items-center gap-1.5 rounded-md px-1.5 py-1 text-sm hover:bg-accent hover:text-accent-foreground cursor-pointer">
           <User className="h-4 w-4" />
           {t("user.account")}
@@ -43,6 +50,10 @@ export function UserMenuClient({ fullName, email, initials, signOutAction }: Use
         <Link href="/account/orders" className="flex items-center gap-1.5 rounded-md px-1.5 py-1 text-sm hover:bg-accent hover:text-accent-foreground cursor-pointer">
           <Package className="h-4 w-4" />
           {t("user.orders")}
+        </Link>
+        <Link href="/account/wishlist" className="flex items-center gap-1.5 rounded-md px-1.5 py-1 text-sm hover:bg-accent hover:text-accent-foreground cursor-pointer">
+          <Heart className="h-4 w-4" />
+          {t("account.wishlist")}
         </Link>
         <Link href="/account/addresses" className="flex items-center gap-1.5 rounded-md px-1.5 py-1 text-sm hover:bg-accent hover:text-accent-foreground cursor-pointer">
           <MapPin className="h-4 w-4" />

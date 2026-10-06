@@ -11,6 +11,7 @@ import { SIZES } from "@/lib/constants";
 import type { ProductVariant } from "@/types";
 
 interface VariantItem {
+  id?: string;
   size: string;
   color: string;
   sku: string;
@@ -38,6 +39,7 @@ export function VariantEditor({ existingVariants = [], onChange }: VariantEditor
   const [variants, setVariants] = useState<VariantItem[]>(
     existingVariants.length > 0
       ? existingVariants.map((v) => ({
+          id: v.id,
           size: v.size,
           color: v.color,
           sku: v.sku || "",
@@ -90,9 +92,13 @@ export function VariantEditor({ existingVariants = [], onChange }: VariantEditor
         </p>
       )}
 
+      {variants.some((v) => v.id) && (
+        <p className="text-xs text-muted-foreground">{t("variants.retiredHint")}</p>
+      )}
+
       {variants.map((variant, index) => (
         <div
-          key={index}
+          key={variant.id || `new-${index}`}
           className="grid grid-cols-6 gap-2 items-end p-3 bg-muted/30 rounded-lg"
         >
           <div className="space-y-1">

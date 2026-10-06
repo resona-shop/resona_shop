@@ -45,11 +45,11 @@ export function AccountOverview({
           <p className="text-2xl font-medium">{addressCount}</p>
           <p className="text-sm text-muted-foreground">{t("account.addresses")}</p>
         </Link>
-        <div className="bg-card rounded-xl shadow-warm-sm p-5">
+        <Link href="/account/wishlist" className="bg-card rounded-xl shadow-warm-sm p-5 hover:shadow-warm transition-shadow">
           <Heart className="h-5 w-5 text-primary mb-2" />
           <p className="text-2xl font-medium">{wishlistCount}</p>
           <p className="text-sm text-muted-foreground">{t("account.wishlist")}</p>
-        </div>
+        </Link>
       </div>
 
       <div>
@@ -79,7 +79,9 @@ export function AccountOverview({
                 </div>
                 <div className="text-right">
                   <p className="text-sm font-medium">${order.total.toFixed(2)}</p>
-                  <p className="text-xs capitalize text-muted-foreground">{order.status}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {t(`status.${order.status}` as Parameters<typeof t>[0])}
+                  </p>
                 </div>
               </div>
             ))}

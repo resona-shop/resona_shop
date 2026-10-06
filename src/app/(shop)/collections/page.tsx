@@ -38,11 +38,11 @@ export default async function CollectionsPage() {
             <div className="absolute inset-0 bg-gradient-to-br from-[#FDD15E]/10 to-[#FF6B4A]/10 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
             <div className="relative h-full flex flex-col justify-end p-6">
               <h2 className="font-[family-name:var(--font-playfair)] text-2xl font-medium text-white group-hover:text-[#FDD15E] transition-colors">
-                <CollectionName slug={collection.slug} fallback={collection.name} />
+                <CollectionName slug={collection.slug} fallback={collection.name} vi={collection.name_vi} />
               </h2>
               {collection.description && (
                 <p className="text-sm text-white/70 mt-1">
-                  <CollectionDesc slug={collection.slug} fallback={collection.description} />
+                  <CollectionDesc slug={collection.slug} fallback={collection.description} vi={collection.description_vi} />
                 </p>
               )}
               <span className="mt-3 text-xs font-medium text-white/80 group-hover:text-[#FDD15E] transition-colors">

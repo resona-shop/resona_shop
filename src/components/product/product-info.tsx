@@ -7,6 +7,7 @@ import { useCart } from "@/hooks/use-cart";
 import { Button } from "@/components/ui/button";
 import { ShoppingBag, Minus, Plus, Check } from "lucide-react";
 import { WishlistButton } from "./wishlist-button";
+import { CategoryLabel } from "./category-label";
 import { useShopT, useProductT } from "@/lib/shop-i18n";
 
 interface ProductInfoProps {
@@ -23,8 +24,10 @@ export function ProductInfo({ product, wishlisted = false }: ProductInfoProps) {
   const sizes = [...new Set(variants.map((v) => v.size))];
   const colors = [...new Set(variants.map((v) => v.color))];
 
-  const [selectedSize, setSelectedSize] = useState(sizes[0] || "");
-  const [selectedColor, setSelectedColor] = useState(colors[0] || "");
+  // Start on something that can actually be bought.
+  const firstAvailable = variants.find((v) => v.stock_quantity > 0) || variants[0];
+  const [selectedSize, setSelectedSize] = useState(firstAvailable?.size || "");
+  const [selectedColor, setSelectedColor] = useState(firstAvailable?.color || "");
   const [quantity, setQuantity] = useState(1);
   const [added, setAdded] = useState(false);
 
@@ -34,26 +37,31 @@ export function ProductInfo({ product, wishlisted = false }: ProductInfoProps) {
 
   const price = selectedVariant?.price_override ?? product.base_price;
   const inStock = selectedVariant ? selectedVariant.stock_quantity > 0 : false;
+  const maxQuantity = selectedVariant?.stock_quantity || 1;
 
   function handleAddToCart() {
     if (!selectedVariant) return;
-    addItem(product, selectedVariant, quantity);
+    addItem(product, selectedVariant, Math.min(quantity, maxQuantity));
     setAdded(true);
     setTimeout(() => setAdded(false), 2000);
   }
 
-  const description = pt.desc(product.slug, product.description);
+  const description = pt.desc(product.slug, product.description, product.description_vi);
 
   return (
     <div className="space-y-6">
       {product.category && (
         <p className="text-sm text-muted-foreground uppercase tracking-wider">
-          {product.category.name}
+          <CategoryLabel
+            slug={product.category.slug}
+            fallback={product.category.name}
+            vi={product.category.name_vi}
+          />
         </p>
       )}
 
       <h1 className="font-[family-name:var(--font-playfair)] text-3xl sm:text-4xl tracking-tight">
-        {pt.name(product.slug, product.name)}
+        {pt.name(product.slug, product.name, product.name_vi)}
       </h1>
 
       <div className="flex items-baseline gap-3">
@@ -144,9 +152,9 @@ export function ProductInfo({ product, wishlisted = false }: ProductInfoProps) {
           >
             <Minus className="h-4 w-4" />
           </button>
-          <span className="w-12 text-center text-sm font-medium">{quantity}</span>
+          <span className="w-12 text-center text-sm font-medium">{Math.min(quantity, maxQuantity)}</span>
           <button
-            onClick={() => setQuantity((q) => q + 1)}
+            onClick={() => setQuantity((q) => Math.min(q + 1, maxQuantity))}
             className="p-3 hover:bg-secondary/50 transition-colors rounded-r-lg"
             aria-label="Increase quantity"
           >

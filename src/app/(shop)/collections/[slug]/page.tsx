@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import { getCollectionBySlug } from "@/actions/products";
 import { ProductGrid } from "@/components/product/product-grid";
+import { CollectionName, CollectionDesc } from "@/components/product/collection-labels";
 import type { Metadata } from "next";
 
 interface Props {
@@ -27,10 +28,12 @@ export default async function CollectionDetailPage({ params }: Props) {
     <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8 lg:py-12">
       <div className="mb-8">
         <h1 className="font-[family-name:var(--font-playfair)] text-3xl sm:text-4xl tracking-tight">
-          {collection.name}
+          <CollectionName slug={collection.slug} fallback={collection.name} vi={collection.name_vi} />
         </h1>
         {collection.description && (
-          <p className="text-muted-foreground mt-2">{collection.description}</p>
+          <p className="text-muted-foreground mt-2">
+            <CollectionDesc slug={collection.slug} fallback={collection.description} vi={collection.description_vi} />
+          </p>
         )}
       </div>
 

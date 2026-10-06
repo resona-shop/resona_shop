@@ -8,17 +8,25 @@ import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { GripVertical, Plus, RotateCcw, Save, Trash2 } from "lucide-react";
+import { toast } from "sonner";
+import { Label } from "@/components/ui/label";
 
 export function SettingsContent({
   stripeConnected,
   supabaseConnected,
   menuItems,
+  linkOptions,
+  announcement,
   onSaveNavigationMenu,
   onResetNavigationMenu,
+  onSaveAnnouncement,
 }: {
   stripeConnected: boolean;
   supabaseConnected: boolean;
   menuItems: NavigationMenuItem[];
+  linkOptions: Array<{ label: string; href: string }>;
+  announcement: { enabled: boolean; en: string; vi: string };
+  onSaveAnnouncement: (value: { enabled: boolean; en: string; vi: string }) => Promise<{ error?: string; success?: boolean }>;
   onSaveNavigationMenu: (formData: FormData) => Promise<{ error?: string; success?: boolean; items?: NavigationMenuItem[] }>;
   onResetNavigationMenu: () => Promise<{ error?: string; success?: boolean; items?: NavigationMenuItem[] }>;
 }) {
@@ -26,6 +34,21 @@ export function SettingsContent({
   const [items, setItems] = useState(menuItems);
   const [message, setMessage] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
+  const [notice, setNotice] = useState(announcement);
+  const knownLinks = new Set(linkOptions.map((option) => option.href));
+
+  function isUnknownLink(href: string) {
+    const value = href.trim();
+    return value.startsWith("/") && !knownLinks.has(value);
+  }
+
+  function handleSaveAnnouncement() {
+    startTransition(async () => {
+      const result = await onSaveAnnouncement(notice);
+      if (result.error) toast.error(result.error);
+      else toast.success(t("common.saved"));
+    });
+  }
 
   function updateItem(index: number, updates: Partial<NavigationMenuItem>) {
     setItems((current) =>
@@ -131,7 +154,50 @@ export function SettingsContent({
         </div>
       </div>
 
+      <div className="bg-card rounded-xl shadow-warm-sm p-6 max-w-2xl space-y-4">
+        <div>
+          <h2 className="text-lg font-semibold">{t("settings.announcement")}</h2>
+          <p className="mt-1 text-sm text-muted-foreground">{t("settings.announcementDesc")}</p>
+        </div>
+        <label className="flex items-center gap-2 text-sm">
+          <Checkbox
+            checked={notice.enabled}
+            onCheckedChange={(checked) => setNotice((n) => ({ ...n, enabled: Boolean(checked) }))}
+          />
+          {t("settings.announcementEnabled")}
+        </label>
+        <div className="space-y-2">
+          <Label htmlFor="announcement-en">{t("settings.announcementEn")}</Label>
+          <Input
+            id="announcement-en"
+            value={notice.en}
+            onChange={(event) => setNotice((n) => ({ ...n, en: event.target.value }))}
+            className="bg-background"
+          />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="announcement-vi">{t("settings.announcementVi")}</Label>
+          <Input
+            id="announcement-vi"
+            value={notice.vi}
+            onChange={(event) => setNotice((n) => ({ ...n, vi: event.target.value }))}
+            className="bg-background"
+          />
+        </div>
+        <Button type="button" onClick={handleSaveAnnouncement} disabled={isPending} className="bg-gradient-golden text-white hover:opacity-90">
+          <Save className="h-4 w-4" />
+          {t("common.save")}
+        </Button>
+      </div>
+
       <div className="bg-card rounded-xl shadow-warm-sm p-6">
+        <datalist id="storefront-links">
+          {linkOptions.map((option) => (
+            <option key={option.href} value={option.href}>
+              {option.label}
+            </option>
+          ))}
+        </datalist>
         <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
           <div>
             <h2 className="text-lg font-semibold">{t("settings.navigation")}</h2>
@@ -197,9 +263,15 @@ export function SettingsContent({
                     <td className="px-2 py-3">
                       <Input
                         value={item.href}
+                        list="storefront-links"
                         onChange={(event) => updateItem(index, { href: event.target.value })}
                         className="bg-background"
                       />
+                      {isUnknownLink(item.href) && (
+                        <p className="mt-1 text-xs text-amber-600">
+                          {t("settings.navigationUnknownLink")}
+                        </p>
+                      )}
                     </td>
                     <td className="px-2 py-3">
                       <select
