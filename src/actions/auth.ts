@@ -2,7 +2,8 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
-import { getCurrentProfile, getCurrentUser, safeRedirectPath } from "@/lib/auth";
+import { getCurrentProfile, getCurrentUser } from "@/lib/auth";
+import { safeRedirectPath } from "@/lib/utils";
 
 export async function signUp(formData: FormData) {
   const supabase = await createClient();

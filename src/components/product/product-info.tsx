@@ -7,8 +7,7 @@ import { useCart } from "@/hooks/use-cart";
 import { Button } from "@/components/ui/button";
 import { ShoppingBag, Minus, Plus, Check } from "lucide-react";
 import { WishlistButton } from "./wishlist-button";
-import { CategoryLabel } from "./category-label";
-import { useShopT, useProductT } from "@/lib/shop-i18n";
+import { useShopT } from "@/lib/shop-i18n";
 
 interface ProductInfoProps {
   product: Product;
@@ -19,7 +18,6 @@ export function ProductInfo({ product, wishlisted = false }: ProductInfoProps) {
   const variants = product.variants || [];
   const addItem = useCart((s) => s.addItem);
   const t = useShopT();
-  const pt = useProductT();
 
   const sizes = [...new Set(variants.map((v) => v.size))];
   const colors = [...new Set(variants.map((v) => v.color))];
@@ -46,22 +44,18 @@ export function ProductInfo({ product, wishlisted = false }: ProductInfoProps) {
     setTimeout(() => setAdded(false), 2000);
   }
 
-  const description = pt.desc(product.slug, product.description, product.description_vi);
+  const description = product.description;
 
   return (
     <div className="space-y-6">
       {product.category && (
         <p className="text-sm text-muted-foreground uppercase tracking-wider">
-          <CategoryLabel
-            slug={product.category.slug}
-            fallback={product.category.name}
-            vi={product.category.name_vi}
-          />
+          {product.category.name}
         </p>
       )}
 
       <h1 className="font-[family-name:var(--font-playfair)] text-3xl sm:text-4xl tracking-tight">
-        {pt.name(product.slug, product.name, product.name_vi)}
+        {product.name}
       </h1>
 
       <div className="flex items-baseline gap-3">

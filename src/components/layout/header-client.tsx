@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import { LocaleSwitch } from "@/components/layout/locale-switch";
 import { SearchDialog } from "@/components/layout/search-dialog";
 import { CartButton } from "@/components/cart/cart-button";
 import { MobileNav } from "@/components/layout/mobile-nav";
@@ -54,9 +53,6 @@ export function HeaderClient({
           </div>
 
           <div className="flex items-center justify-end gap-1.5 text-foreground/80">
-            <div className="hidden lg:block">
-              <LocaleSwitch />
-            </div>
             {children}
             <CartButton />
           </div>

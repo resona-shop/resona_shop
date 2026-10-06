@@ -1,7 +1,7 @@
 import { SettingsContent } from "@/components/admin/settings-content";
-import { saveNavigationMenu, resetNavigationMenu, saveAnnouncement } from "@/actions/admin";
+import { saveNavigationMenu, resetNavigationMenu, saveAnnouncement, saveSiteContent } from "@/actions/admin";
 import { getNavigationMenuItems, staticStorefrontLinks } from "@/lib/navigation-menu";
-import { getAnnouncement } from "@/lib/site-settings";
+import { getAnnouncement, getContentOverrides } from "@/lib/site-settings";
 import { getCategories, getCollections } from "@/actions/products";
 import type { Metadata } from "next";
 
@@ -10,9 +10,10 @@ export const metadata: Metadata = {
 };
 
 export default async function AdminSettingsPage() {
-  const [menuItems, announcement, categories, collections] = await Promise.all([
+  const [menuItems, announcement, content, categories, collections] = await Promise.all([
     getNavigationMenuItems({ includeInactive: true }),
     getAnnouncement(),
+    getContentOverrides(),
     getCategories(),
     getCollections(),
   ]);
@@ -30,7 +31,9 @@ export default async function AdminSettingsPage() {
       supabaseConnected={!!process.env.NEXT_PUBLIC_SUPABASE_URL}
       menuItems={menuItems}
       linkOptions={linkOptions}
-      announcement={announcement || { enabled: true, en: "", vi: "" }}
+      announcement={announcement || { enabled: true, en: "" }}
+      content={content}
+      onSaveContent={saveSiteContent}
       onSaveNavigationMenu={saveNavigationMenu}
       onResetNavigationMenu={resetNavigationMenu}
       onSaveAnnouncement={saveAnnouncement}

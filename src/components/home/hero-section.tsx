@@ -4,13 +4,25 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { ArrowRight } from "lucide-react";
 import { useShopT } from "@/lib/shop-i18n";
+import { HERO_IMAGE_KEY } from "@/lib/site-content";
 
-export function HeroSection() {
-  const t = useShopT();
+export function HeroSection({ content }: { content?: Record<string, string> }) {
+  const t = useShopT(content);
+  const image = content?.[HERO_IMAGE_KEY];
 
   return (
     <section className="relative min-h-[85vh] flex items-center overflow-hidden">
       <div className="absolute inset-0 bg-gradient-to-br from-[#FFF8F0] via-[#FFE8D6] to-[#FFD4B8]" />
+      {image && (
+        <>
+          <div
+            className="absolute inset-0 bg-cover bg-center"
+            style={{ backgroundImage: `url(${JSON.stringify(image)})` }}
+          />
+          {/* Keeps the copy readable on top of any photo. */}
+          <div className="absolute inset-0 bg-gradient-to-r from-[#FFF8F0]/95 via-[#FFF8F0]/70 to-transparent" />
+        </>
+      )}
       <div className="absolute top-20 right-[15%] w-72 h-72 rounded-full bg-[#FDD15E]/20 blur-3xl" />
       <div className="absolute bottom-20 left-[10%] w-96 h-96 rounded-full bg-[#FF6B4A]/10 blur-3xl" />
       <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] rounded-full bg-[#FF8C42]/8 blur-3xl" />

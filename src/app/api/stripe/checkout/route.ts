@@ -2,29 +2,12 @@ import { NextResponse } from "next/server";
 import { getStripeServer } from "@/lib/stripe/server";
 import { createClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/server";
-
-interface CheckoutItem {
-  variant_id: string;
-  quantity: number;
-}
-
-interface VariantRow {
-  id: string;
-  size: string;
-  color: string;
-  price_override: number | null;
-  stock_quantity: number;
-  is_active: boolean;
-  product: {
-    id: string;
-    name: string;
-    base_price: number;
-    is_active: boolean;
-    images: Array<{ url: string; is_primary: boolean; sort_order: number }>;
-  } | null;
-}
-
-const MAX_QUANTITY = 20;
+import {
+  parseCheckoutItems,
+  resolveCheckoutLines,
+  sumCheckoutLines,
+  type CheckoutVariant,
+} from "@/lib/checkout";
 
 export async function POST(request: Request) {
   try {
@@ -33,16 +16,11 @@ export async function POST(request: Request) {
       data: { user },
     } = await supabase.auth.getUser();
 
-    const body = (await request.json()) as { items?: CheckoutItem[] };
+    const body = (await request.json()) as { items?: unknown };
 
     // Only ids and quantities are taken from the browser; names, prices and
     // stock always come from the database.
-    const quantities = new Map<string, number>();
-    for (const item of Array.isArray(body.items) ? body.items : []) {
-      const quantity = Math.floor(Number(item?.quantity));
-      if (typeof item?.variant_id !== "string" || !(quantity > 0)) continue;
-      quantities.set(item.variant_id, (quantities.get(item.variant_id) || 0) + quantity);
-    }
+    const quantities = parseCheckoutItems(body.items);
 
     if (quantities.size === 0) {
       return NextResponse.json(
@@ -68,40 +46,10 @@ export async function POST(request: Request) {
       );
     }
 
-    const variants = new Map(
-      ((variantData || []) as unknown as VariantRow[]).map((v) => [v.id, v])
+    const { lines, unavailable } = resolveCheckoutLines(
+      quantities,
+      (variantData || []) as unknown as CheckoutVariant[]
     );
-
-    const lines: Array<{
-      variant: VariantRow;
-      product: NonNullable<VariantRow["product"]>;
-      quantity: number;
-      unitAmount: number;
-      label: string;
-    }> = [];
-    const unavailable: string[] = [];
-
-    for (const [variantId, quantity] of quantities) {
-      const variant = variants.get(variantId);
-      const product = variant?.product;
-      if (!variant || !product || !variant.is_active || !product.is_active) {
-        unavailable.push(variantId);
-        continue;
-      }
-      if (quantity > MAX_QUANTITY || quantity > variant.stock_quantity) {
-        unavailable.push(variantId);
-        continue;
-      }
-      lines.push({
-        variant,
-        product,
-        quantity,
-        unitAmount: Math.round(
-          Number(variant.price_override ?? product.base_price) * 100
-        ),
-        label: `${variant.color} / ${variant.size}`,
-      });
-    }
 
     if (unavailable.length > 0) {
       return NextResponse.json(
@@ -132,8 +80,7 @@ export async function POST(request: Request) {
     });
 
     // Create pending order in DB so we don't hit Stripe's 500-char metadata limit
-    const subtotal =
-      lines.reduce((sum, line) => sum + line.unitAmount * line.quantity, 0) / 100;
+    const subtotal = sumCheckoutLines(lines) / 100;
 
     const { data: order, error: orderError } = await serviceSupabase
       .from("orders")

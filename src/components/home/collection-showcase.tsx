@@ -2,7 +2,6 @@ import Link from "next/link";
 import Image from "next/image";
 import { getCollections } from "@/actions/products";
 import { CollectionHeader, CollectionShopNow } from "./section-headers";
-import { CollectionName, CollectionDesc } from "@/components/product/collection-labels";
 
 export async function CollectionShowcase() {
   const collections = await getCollections();
@@ -38,11 +37,11 @@ export async function CollectionShowcase() {
               <div className="absolute inset-0 bg-gradient-to-br from-[#FDD15E]/10 to-[#FF6B4A]/10 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
               <div className="relative h-full flex flex-col justify-end p-5 sm:p-6">
                 <h3 className="font-[family-name:var(--font-playfair)] text-xl sm:text-2xl font-medium text-white group-hover:text-[#FDD15E] transition-colors">
-                  <CollectionName slug={collection.slug} fallback={collection.name} vi={collection.name_vi} />
+                  {collection.name}
                 </h3>
                 {collection.description && (
                   <p className="text-sm text-white/70 mt-1">
-                    <CollectionDesc slug={collection.slug} fallback={collection.description} vi={collection.description_vi} />
+                    {collection.description}
                   </p>
                 )}
                 <CollectionShopNow />

@@ -2,7 +2,6 @@ import { getProducts, getCategories } from "@/actions/products";
 import { ProductGrid } from "@/components/product/product-grid";
 import { SortSelect } from "@/components/product/sort-select";
 import { ProductsPageHeader, ProductsAllLabel } from "@/components/product/page-headers";
-import { CategoryLabel } from "@/components/product/category-label";
 import { ProductsPagination } from "@/components/product/products-pagination";
 import { Suspense } from "react";
 import type { Metadata } from "next";
@@ -72,7 +71,7 @@ export default async function ProductsPage({
                 : "bg-secondary hover:bg-secondary/80 text-secondary-foreground"
             }`}
           >
-            <CategoryLabel slug={cat.slug} fallback={cat.name} vi={cat.name_vi} />
+            {cat.name}
           </a>
         ))}
 

@@ -6,6 +6,8 @@ import { requireAdmin } from "@/lib/auth";
 import { markOrderRefunded, PAID_ORDER_STATUSES } from "@/lib/orders";
 import { defaultNavigationMenuItems } from "@/lib/navigation-menu";
 import { slugify } from "@/lib/utils";
+import { sanitizeContentOverrides } from "@/lib/site-content";
+import { sendOrderEmail } from "@/lib/order-emails";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 
@@ -194,11 +196,7 @@ export async function resetNavigationMenu() {
   return { success: true, items: savedItems || [] };
 }
 
-export async function saveAnnouncement(value: {
-  enabled: boolean;
-  en: string;
-  vi: string;
-}) {
+export async function saveAnnouncement(value: { enabled: boolean; en: string }) {
   const supabase = await requireAdmin();
   const { error } = await supabase.from("site_settings").upsert(
     {
@@ -206,8 +204,22 @@ export async function saveAnnouncement(value: {
       value: {
         enabled: Boolean(value.enabled),
         en: value.en.trim(),
-        vi: value.vi.trim(),
       },
+      updated_at: new Date().toISOString(),
+    },
+    { onConflict: "key" }
+  );
+  if (error) return { error: error.message };
+  revalidatePath("/");
+  return { success: true };
+}
+
+export async function saveSiteContent(value: Record<string, string>) {
+  const supabase = await requireAdmin();
+  const { error } = await supabase.from("site_settings").upsert(
+    {
+      key: "content",
+      value: sanitizeContentOverrides(value),
       updated_at: new Date().toISOString(),
     },
     { onConflict: "key" }
@@ -360,6 +372,7 @@ export async function updateOrderTracking(
     })
     .eq("id", id);
   if (error) return { error: error.message };
+  await sendOrderEmail(id, "shipped");
   return { success: true };
 }
 
@@ -419,6 +432,7 @@ export async function approveRefund(orderId: string) {
     });
 
     await markOrderRefunded(orderId);
+    await sendOrderEmail(orderId, "refund_approved");
 
     return { success: true };
   } catch (err: unknown) {
@@ -447,6 +461,7 @@ export async function rejectRefund(orderId: string) {
     .eq("id", orderId);
 
   if (error) return { error: error.message };
+  await sendOrderEmail(orderId, "refund_rejected");
   return { success: true };
 }
 
@@ -540,9 +555,7 @@ function productFields(formData: FormData) {
   const comparePrice = parseFloat(text(formData, "compare_at_price"));
   return {
     name: text(formData, "name"),
-    name_vi: optionalText(formData, "name_vi"),
     description: text(formData, "description"),
-    description_vi: optionalText(formData, "description_vi"),
     category_id: optionalText(formData, "category_id"),
     base_price: basePrice,
     compare_at_price: Number.isFinite(comparePrice) && comparePrice > 0 ? comparePrice : null,
@@ -551,10 +564,10 @@ function productFields(formData: FormData) {
   };
 }
 
-function variantRow(productId: string, v: VariantInput) {
+function variantPayload(v: VariantInput) {
   const price = parseFloat(v.price_override);
   return {
-    product_id: productId,
+    id: v.id || null,
     size: v.size,
     color: v.color.trim(),
     sku: v.sku?.trim() || null,
@@ -564,50 +577,9 @@ function variantRow(productId: string, v: VariantInput) {
   };
 }
 
-export async function createProduct(formData: FormData) {
-  const supabase = await requireAdmin();
-
-  const fields = productFields(formData);
-  if (!fields.name) return { error: "Name is required" };
-  if (!Number.isFinite(fields.base_price) || fields.base_price < 0) {
-    return { error: "Invalid price" };
-  }
-
-  const slug = await uniqueSlug(supabase, "products", text(formData, "slug") || fields.name);
-
-  const { data, error } = await supabase
-    .from("products")
-    .insert({ ...fields, slug })
-    .select("id")
-    .single();
-
-  if (error || !data) return { error: error?.message || "Failed to create product" };
-
-  const images = parseJsonList<ImageInput>(formData.get("images")) || [];
-  if (images.length > 0) {
-    const { error: imageError } = await supabase.from("product_images").insert(
-      images.map((img) => ({
-        product_id: data.id,
-        url: img.url,
-        is_primary: img.is_primary,
-        sort_order: img.sort_order,
-      }))
-    );
-    if (imageError) return { error: imageError.message };
-  }
-
-  const variants = parseJsonList<VariantInput>(formData.get("variants")) || [];
-  if (variants.length > 0) {
-    const { error: variantError } = await supabase
-      .from("product_variants")
-      .insert(variants.map((v) => variantRow(data.id, v)));
-    if (variantError) return { error: variantError.message };
-  }
-
-  redirect(`/admin/products`);
-}
-
-export async function updateProduct(id: string, formData: FormData) {
+// Product, images and variants are written by one database function, so a
+// failure part-way leaves nothing half-saved.
+async function saveProduct(id: string | null, formData: FormData) {
   const supabase = await requireAdmin();
 
   const fields = productFields(formData);
@@ -617,69 +589,41 @@ export async function updateProduct(id: string, formData: FormData) {
   }
 
   const requestedSlug = text(formData, "slug");
-  const update: Record<string, unknown> = { ...fields };
-  if (requestedSlug) {
-    update.slug = await uniqueSlug(supabase, "products", requestedSlug, id);
-  }
-
-  const { error } = await supabase.from("products").update(update).eq("id", id);
-  if (error) return { error: error.message };
+  const slug = id
+    ? requestedSlug
+      ? await uniqueSlug(supabase, "products", requestedSlug, id)
+      : null
+    : await uniqueSlug(supabase, "products", requestedSlug || fields.name);
 
   const images = parseJsonList<ImageInput>(formData.get("images"));
-  if (images) {
-    await supabase.from("product_images").delete().eq("product_id", id);
-
-    if (images.length > 0) {
-      const { error: imageError } = await supabase.from("product_images").insert(
-        images.map((img) => ({
-          product_id: id,
-          url: img.url,
-          is_primary: img.is_primary,
-          sort_order: img.sort_order,
-        }))
-      );
-      if (imageError) return { error: imageError.message };
-    }
-  }
-
-  // Variants are updated in place: orders and customers' carts reference
-  // variant ids, so they must survive an edit.
   const variants = parseJsonList<VariantInput>(formData.get("variants"));
-  if (variants) {
-    const { data: existing } = await supabase
-      .from("product_variants")
-      .select("id")
-      .eq("product_id", id);
-    const existingIds = new Set((existing || []).map((v) => v.id as string));
-    const keptIds = new Set(
-      variants.map((v) => v.id).filter((vid): vid is string => !!vid && existingIds.has(vid))
-    );
 
-    for (const removedId of existingIds) {
-      if (keptIds.has(removedId)) continue;
-      const { error: deleteError } = await supabase
-        .from("product_variants")
-        .delete()
-        .eq("id", removedId);
-      if (deleteError) {
-        // Already ordered, so it cannot be deleted: retire it instead.
-        await supabase
-          .from("product_variants")
-          .update({ is_active: false, stock_quantity: 0 })
-          .eq("id", removedId);
-      }
-    }
+  const { error } = await supabase.rpc("admin_save_product", {
+    p_id: id,
+    p_product: { ...fields, slug },
+    p_images: images
+      ? images.map((img) => ({
+          url: img.url,
+          is_primary: Boolean(img.is_primary),
+          sort_order: Number(img.sort_order) || 0,
+        }))
+      : null,
+    p_variants: variants ? variants.map(variantPayload) : null,
+  });
 
-    for (const v of variants) {
-      const row = variantRow(id, v);
-      const { error: variantError } =
-        v.id && existingIds.has(v.id)
-          ? await supabase.from("product_variants").update(row).eq("id", v.id)
-          : await supabase.from("product_variants").insert(row);
-      if (variantError) return { error: variantError.message };
-    }
-  }
+  if (error) return { error: error.message };
+  return { success: true };
+}
 
+export async function createProduct(formData: FormData) {
+  const result = await saveProduct(null, formData);
+  if (result.error) return { error: result.error };
+  redirect(`/admin/products`);
+}
+
+export async function updateProduct(id: string, formData: FormData) {
+  const result = await saveProduct(id, formData);
+  if (result.error) return { error: result.error };
   redirect(`/admin/products`);
 }
 
@@ -713,9 +657,7 @@ export async function getAdminCollections() {
 function collectionFields(formData: FormData) {
   return {
     name: text(formData, "name"),
-    name_vi: optionalText(formData, "name_vi"),
     description: optionalText(formData, "description"),
-    description_vi: optionalText(formData, "description_vi"),
     image_url: optionalText(formData, "image_url"),
     sort_order: intOrZero(formData, "sort_order"),
     is_active: formData.get("is_active") === "on",
@@ -768,18 +710,11 @@ export async function getCollectionProductMap() {
 
 export async function updateCollectionProducts(collectionId: string, productIds: string[]) {
   const supabase = await requireAdmin();
-  const { error: deleteError } = await supabase
-    .from("product_collections")
-    .delete()
-    .eq("collection_id", collectionId);
-  if (deleteError) return { error: deleteError.message };
-
-  if (productIds.length > 0) {
-    const { error } = await supabase.from("product_collections").insert(
-      productIds.map((pid) => ({ collection_id: collectionId, product_id: pid }))
-    );
-    if (error) return { error: error.message };
-  }
+  const { error } = await supabase.rpc("admin_set_collection_products", {
+    p_collection_id: collectionId,
+    p_product_ids: productIds,
+  });
+  if (error) return { error: error.message };
   return { success: true };
 }
 
@@ -795,7 +730,6 @@ export async function getAdminCategories() {
 function categoryFields(formData: FormData) {
   return {
     name: text(formData, "name"),
-    name_vi: optionalText(formData, "name_vi"),
     description: optionalText(formData, "description"),
     parent_id: optionalText(formData, "parent_id"),
     sort_order: intOrZero(formData, "sort_order"),

@@ -9,6 +9,10 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { GripVertical, Plus, RotateCcw, Save, Trash2 } from "lucide-react";
 import { toast } from "sonner";
+import { Textarea } from "@/components/ui/textarea";
+import { createClient } from "@/lib/supabase/client";
+import { shopDefaultText } from "@/lib/shop-i18n";
+import { editableContentGroups, HERO_IMAGE_KEY } from "@/lib/site-content";
 import { Label } from "@/components/ui/label";
 
 export function SettingsContent({
@@ -17,6 +21,8 @@ export function SettingsContent({
   menuItems,
   linkOptions,
   announcement,
+  content,
+  onSaveContent,
   onSaveNavigationMenu,
   onResetNavigationMenu,
   onSaveAnnouncement,
@@ -25,8 +31,10 @@ export function SettingsContent({
   supabaseConnected: boolean;
   menuItems: NavigationMenuItem[];
   linkOptions: Array<{ label: string; href: string }>;
-  announcement: { enabled: boolean; en: string; vi: string };
-  onSaveAnnouncement: (value: { enabled: boolean; en: string; vi: string }) => Promise<{ error?: string; success?: boolean }>;
+  announcement: { enabled: boolean; en: string };
+  onSaveAnnouncement: (value: { enabled: boolean; en: string }) => Promise<{ error?: string; success?: boolean }>;
+  content: Record<string, string>;
+  onSaveContent: (value: Record<string, string>) => Promise<{ error?: string; success?: boolean }>;
   onSaveNavigationMenu: (formData: FormData) => Promise<{ error?: string; success?: boolean; items?: NavigationMenuItem[] }>;
   onResetNavigationMenu: () => Promise<{ error?: string; success?: boolean; items?: NavigationMenuItem[] }>;
 }) {
@@ -40,6 +48,44 @@ export function SettingsContent({
   function isUnknownLink(href: string) {
     const value = href.trim();
     return value.startsWith("/") && !knownLinks.has(value);
+  }
+
+  const [copy, setCopy] = useState(content);
+  const [uploading, setUploading] = useState(false);
+
+  function setCopyValue(key: string, value: string) {
+    setCopy((current) => ({ ...current, [key]: value }));
+  }
+
+  function handleSaveContent() {
+    startTransition(async () => {
+      const result = await onSaveContent(copy);
+      if (result.error) toast.error(result.error);
+      else toast.success(t("common.saved"));
+    });
+  }
+
+  async function handleHeroUpload(event: React.ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file) return;
+
+    setUploading(true);
+    const supabase = createClient();
+    const path = `site/hero-${Date.now()}.${file.name.split(".").pop()}`;
+    const { error } = await supabase.storage
+      .from("product-images")
+      .upload(path, file, { cacheControl: "3600" });
+    setUploading(false);
+
+    if (error) {
+      toast.error(t("settings.uploadFailed"));
+      return;
+    }
+    setCopyValue(
+      HERO_IMAGE_KEY,
+      supabase.storage.from("product-images").getPublicUrl(path).data.publicUrl
+    );
   }
 
   function handleSaveAnnouncement() {
@@ -175,16 +221,76 @@ export function SettingsContent({
             className="bg-background"
           />
         </div>
-        <div className="space-y-2">
-          <Label htmlFor="announcement-vi">{t("settings.announcementVi")}</Label>
-          <Input
-            id="announcement-vi"
-            value={notice.vi}
-            onChange={(event) => setNotice((n) => ({ ...n, vi: event.target.value }))}
-            className="bg-background"
-          />
-        </div>
         <Button type="button" onClick={handleSaveAnnouncement} disabled={isPending} className="bg-gradient-golden text-white hover:opacity-90">
+          <Save className="h-4 w-4" />
+          {t("common.save")}
+        </Button>
+      </div>
+
+      <div className="bg-card rounded-xl shadow-warm-sm p-6 max-w-2xl space-y-6">
+        <div>
+          <h2 className="text-lg font-semibold">{t("settings.content")}</h2>
+          <p className="mt-1 text-sm text-muted-foreground">{t("settings.contentDesc")}</p>
+        </div>
+
+        <div className="space-y-2">
+          <Label>{t("settings.heroImage")}</Label>
+          {copy[HERO_IMAGE_KEY] && (
+            <div
+              className="h-36 w-full rounded-lg border border-border bg-cover bg-center"
+              style={{ backgroundImage: `url(${JSON.stringify(copy[HERO_IMAGE_KEY])})` }}
+            />
+          )}
+          <div className="flex gap-2">
+            <label className="inline-flex cursor-pointer items-center rounded-lg border border-input bg-background px-3 py-1.5 text-xs hover:bg-muted/50">
+              {uploading ? "…" : t("settings.heroImageUpload")}
+              <input
+                type="file"
+                accept="image/jpeg,image/png,image/webp"
+                onChange={handleHeroUpload}
+                disabled={uploading}
+                className="hidden"
+              />
+            </label>
+            {copy[HERO_IMAGE_KEY] && (
+              <button
+                type="button"
+                onClick={() => setCopyValue(HERO_IMAGE_KEY, "")}
+                className="rounded-lg border border-input px-3 py-1.5 text-xs text-destructive hover:bg-destructive/5"
+              >
+                {t("settings.heroImageRemove")}
+              </button>
+            )}
+          </div>
+        </div>
+
+        {editableContentGroups.map((group) => (
+          <div key={group.id} className="space-y-3">
+            <h3 className="text-sm font-semibold">{t(`settings.content.${group.id}`)}</h3>
+            {group.fields.map((field) =>
+              field.multiline ? (
+                <Textarea
+                  key={field.key}
+                  rows={3}
+                  value={copy[field.key] || ""}
+                  placeholder={shopDefaultText(field.key)}
+                  onChange={(event) => setCopyValue(field.key, event.target.value)}
+                  className="bg-background"
+                />
+              ) : (
+                <Input
+                  key={field.key}
+                  value={copy[field.key] || ""}
+                  placeholder={shopDefaultText(field.key)}
+                  onChange={(event) => setCopyValue(field.key, event.target.value)}
+                  className="bg-background"
+                />
+              )
+            )}
+          </div>
+        ))}
+
+        <Button type="button" onClick={handleSaveContent} disabled={isPending} className="bg-gradient-golden text-white hover:opacity-90">
           <Save className="h-4 w-4" />
           {t("common.save")}
         </Button>

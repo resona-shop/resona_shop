@@ -6,17 +6,20 @@ import { FeaturedProducts } from "@/components/home/featured-products";
 import { CollectionShowcase } from "@/components/home/collection-showcase";
 import { BrandStory } from "@/components/home/brand-story";
 import { NewsletterSignup } from "@/components/home/newsletter-signup";
+import { getContentOverrides } from "@/lib/site-settings";
 
-export default function HomePage() {
+export default async function HomePage() {
+  const content = await getContentOverrides();
+
   return (
     <>
       <AnnouncementBar />
       <Header />
       <main className="flex-1">
-        <HeroSection />
+        <HeroSection content={content} />
         <FeaturedProducts />
         <CollectionShowcase />
-        <BrandStory />
+        <BrandStory content={content} />
         <NewsletterSignup />
       </main>
       <Footer />

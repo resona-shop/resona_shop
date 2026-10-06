@@ -9,7 +9,6 @@ import { Menu } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useShopT } from "@/lib/shop-i18n";
 import { BrandLogo } from "@/components/layout/brand-logo";
-import { LocaleSwitch } from "@/components/layout/locale-switch";
 import type { NavigationMenuItem } from "@/lib/navigation-menu";
 
 export function MobileNav({
@@ -55,11 +54,10 @@ export function MobileNav({
       <SheetContent side="left" className="w-72 bg-background p-0">
         <SheetTitle className="sr-only">Menu</SheetTitle>
         <div className="flex flex-col h-full">
-          <div className="p-6 border-b border-border flex items-center justify-between">
+          <div className="p-6 border-b border-border">
             <Link href="/" onClick={() => setOpen(false)} aria-label="Resona home">
               <BrandLogo className="h-10" />
             </Link>
-            <LocaleSwitch />
           </div>
           <nav className="flex-1 overflow-y-auto p-4 space-y-1">
             {topLevelItems.map((item) => (

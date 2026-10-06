@@ -1,6 +1,7 @@
 import type Stripe from "stripe";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { createServiceClient } from "@/lib/supabase/server";
+import { sendOrderEmail } from "@/lib/order-emails";
 
 // Statuses that represent money actually received.
 export const PAID_ORDER_STATUSES = [
@@ -63,6 +64,7 @@ export async function fulfillCheckoutSession(session: Stripe.Checkout.Session) {
       total: (session.amount_total || 0) / 100,
       currency: session.currency || "usd",
       shipping_address: shippingAddress,
+      customer_email: session.customer_details?.email || null,
       stripe_payment_intent_id:
         typeof session.payment_intent === "string" ? session.payment_intent : null,
     })
@@ -84,6 +86,7 @@ export async function fulfillCheckoutSession(session: Stripe.Checkout.Session) {
   }
 
   await adjustOrderStock(supabase, orderId, -1);
+  await sendOrderEmail(orderId, "confirmation");
 
   // Sync shipping address to user's saved addresses
   if (order.user_id && shippingAddress.line1) {

@@ -96,29 +96,6 @@ export function ProductForm({ categories, product, action }: ProductFormProps) {
         />
       </div>
 
-      <div className="space-y-2">
-        <Label htmlFor="name_vi">{t("form.nameVi")}</Label>
-        <Input
-          id="name_vi"
-          name="name_vi"
-          defaultValue={product?.name_vi || ""}
-          placeholder={t("form.optional")}
-          className="bg-background"
-        />
-      </div>
-
-      <div className="space-y-2">
-        <Label htmlFor="description_vi">{t("form.descriptionVi")}</Label>
-        <Textarea
-          id="description_vi"
-          name="description_vi"
-          rows={3}
-          defaultValue={product?.description_vi || ""}
-          placeholder={t("form.optional")}
-          className="bg-background"
-        />
-      </div>
-
       <div className="grid grid-cols-2 gap-4">
         <div className="space-y-2">
           <Label htmlFor="base_price">{t("form.price")}</Label>

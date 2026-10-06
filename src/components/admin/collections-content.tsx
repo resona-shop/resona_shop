@@ -17,8 +17,6 @@ interface Collection {
   description: string | null;
   image_url: string | null;
   is_active: boolean;
-  name_vi?: string | null;
-  description_vi?: string | null;
   sort_order?: number;
 }
 
@@ -308,14 +306,6 @@ export function CollectionsContent({
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="edit-name_vi">{t("form.nameVi")}</Label>
-              <input id="edit-name_vi" name="name_vi" defaultValue={editingItem.name_vi || ""} placeholder={t("form.optional")} className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring" />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="edit-description_vi">{t("form.descriptionVi")}</Label>
-              <input id="edit-description_vi" name="description_vi" defaultValue={editingItem.description_vi || ""} placeholder={t("form.optional")} className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring" />
-            </div>
-            <div className="space-y-2">
               <Label htmlFor="edit-sort_order">{t("form.sortOrder")}</Label>
               <input id="edit-sort_order" name="sort_order" type="number" defaultValue={editingItem.sort_order ?? 0} className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring" />
             </div>
@@ -359,14 +349,6 @@ export function CollectionsContent({
                 name="description"
                 className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
               />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="name_vi">{t("form.nameVi")}</Label>
-              <input id="name_vi" name="name_vi" placeholder={t("form.optional")} className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring" />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="description_vi">{t("form.descriptionVi")}</Label>
-              <input id="description_vi" name="description_vi" placeholder={t("form.optional")} className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring" />
             </div>
             <div className="space-y-2">
               <Label htmlFor="sort_order">{t("form.sortOrder")}</Label>

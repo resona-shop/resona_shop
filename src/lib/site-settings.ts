@@ -1,27 +1,36 @@
 import { cache } from "react";
 import { createClient } from "@/lib/supabase/server";
+import { sanitizeContentOverrides } from "@/lib/site-content";
 
 export interface AnnouncementSetting {
   enabled: boolean;
   en: string;
-  vi: string;
+}
+
+async function getSetting(key: string) {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("site_settings")
+    .select("value")
+    .eq("key", key)
+    .maybeSingle();
+
+  if (error || !data?.value) return null;
+  return data.value as Record<string, unknown>;
 }
 
 // Returns null when nothing has been saved yet, so callers can fall back to
 // the built-in copy.
 export const getAnnouncement = cache(async (): Promise<AnnouncementSetting | null> => {
-  const supabase = await createClient();
-  const { data, error } = await supabase
-    .from("site_settings")
-    .select("value")
-    .eq("key", "announcement")
-    .maybeSingle();
-
-  if (error || !data?.value) return null;
-  const value = data.value as Partial<AnnouncementSetting>;
+  const value = await getSetting("announcement");
+  if (!value) return null;
   return {
     enabled: value.enabled !== false,
-    en: value.en || "",
-    vi: value.vi || "",
+    en: typeof value.en === "string" ? value.en : "",
   };
+});
+
+// Admin-edited storefront copy, keyed like the built-in text it replaces.
+export const getContentOverrides = cache(async () => {
+  return sanitizeContentOverrides(await getSetting("content"));
 });

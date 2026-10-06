@@ -11,7 +11,6 @@ interface Category {
   id: string;
   name: string;
   slug: string;
-  name_vi?: string | null;
   description: string | null;
   parent_id: string | null;
   sort_order?: number;
@@ -118,10 +117,6 @@ export function CategoriesContent({
               <Input id="edit-name" name="name" required defaultValue={editingItem.name} className="bg-background" />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="edit-name_vi">{t("form.nameVi")}</Label>
-              <Input id="edit-name_vi" name="name_vi" defaultValue={editingItem.name_vi || ""} placeholder={t("form.optional")} className="bg-background" />
-            </div>
-            <div className="space-y-2">
               <Label htmlFor="edit-description">{t("form.description")}</Label>
               <Input id="edit-description" name="description" defaultValue={editingItem.description || ""} className="bg-background" />
             </div>
@@ -160,10 +155,6 @@ export function CategoriesContent({
             <div className="space-y-2">
               <Label htmlFor="name">{t("table.name")}</Label>
               <Input id="name" name="name" required className="bg-background" />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="name_vi">{t("form.nameVi")}</Label>
-              <Input id="name_vi" name="name_vi" placeholder={t("form.optional")} className="bg-background" />
             </div>
             <div className="space-y-2">
               <Label htmlFor="description">{t("form.description")}</Label>

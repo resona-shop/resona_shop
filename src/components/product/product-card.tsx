@@ -7,7 +7,7 @@ import type { Product } from "@/types";
 import { formatPrice } from "@/lib/utils";
 import { useCart } from "@/hooks/use-cart";
 import { ShoppingBag, Check } from "lucide-react";
-import { useShopT, useProductT } from "@/lib/shop-i18n";
+import { useShopT } from "@/lib/shop-i18n";
 
 interface ProductCardProps {
   product: Product;
@@ -16,7 +16,6 @@ interface ProductCardProps {
 export function ProductCard({ product }: ProductCardProps) {
   const addItem = useCart((s) => s.addItem);
   const t = useShopT();
-  const pt = useProductT();
   const [added, setAdded] = useState(false);
   const primaryImage = product.images?.find((img) => img.is_primary) || product.images?.[0];
   const secondImage = product.images?.find((img) => !img.is_primary && img.sort_order === 1);
@@ -99,7 +98,7 @@ export function ProductCard({ product }: ProductCardProps) {
       </div>
 
       <h3 className="text-sm font-medium group-hover:text-primary transition-colors line-clamp-1">
-        {pt.name(product.slug, product.name, product.name_vi)}
+        {product.name}
       </h3>
       <div className="flex items-center gap-2 mt-0.5">
         <p className="text-sm text-foreground font-medium">

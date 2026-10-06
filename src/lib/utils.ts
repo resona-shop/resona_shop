@@ -43,3 +43,11 @@ export function truncate(text: string, length: number) {
   if (text.length <= length) return text;
   return text.slice(0, length).trimEnd() + "...";
 }
+
+// Only allow same-site relative paths as post-login redirect targets.
+export function safeRedirectPath(path: string | null | undefined) {
+  if (!path || !path.startsWith("/") || path.startsWith("//") || path.includes("\\")) {
+    return "/";
+  }
+  return path;
+}

@@ -34,11 +34,3 @@ export async function requireAdmin() {
   }
   return createClient();
 }
-
-// Only allow same-site relative paths as post-login redirect targets.
-export function safeRedirectPath(path: string | null | undefined) {
-  if (!path || !path.startsWith("/") || path.startsWith("//") || path.includes("\\")) {
-    return "/";
-  }
-  return path;
-}

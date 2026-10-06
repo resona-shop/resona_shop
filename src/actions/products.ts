@@ -45,7 +45,7 @@ export async function getProducts(options?: {
   const term = options?.search?.replace(/[,()%*\\"]/g, " ").trim();
   if (term) {
     query = query.or(
-      `name.ilike.%${term}%,description.ilike.%${term}%,name_vi.ilike.%${term}%`
+      `name.ilike.%${term}%,description.ilike.%${term}%`
     );
   }
 

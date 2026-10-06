@@ -2,8 +2,8 @@
 
 import { useShopT } from "@/lib/shop-i18n";
 
-export function BrandStory() {
-  const t = useShopT();
+export function BrandStory({ content }: { content?: Record<string, string> }) {
+  const t = useShopT(content);
 
   return (
     <section className="py-20 lg:py-32 relative overflow-hidden">
