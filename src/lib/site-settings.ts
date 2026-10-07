@@ -1,5 +1,5 @@
 import { cache } from "react";
-import { createClient } from "@/lib/supabase/server";
+import { createPublicClient } from "@/lib/supabase/server";
 import { sanitizeContentOverrides } from "@/lib/site-content";
 
 export interface AnnouncementSetting {
@@ -7,8 +7,9 @@ export interface AnnouncementSetting {
   en: string;
 }
 
+// Storefront copy is public data; reading it without cookies keeps pages static.
 async function getSetting(key: string) {
-  const supabase = await createClient();
+  const supabase = createPublicClient();
   const { data, error } = await supabase
     .from("site_settings")
     .select("value")

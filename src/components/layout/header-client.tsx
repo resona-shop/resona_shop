@@ -5,6 +5,10 @@ import { SearchDialog } from "@/components/layout/search-dialog";
 import { CartButton } from "@/components/cart/cart-button";
 import { MobileNav } from "@/components/layout/mobile-nav";
 import { BrandLogo } from "@/components/layout/brand-logo";
+import { UserMenuClient } from "@/components/auth/user-menu-client";
+import { useAuthState } from "@/hooks/use-auth-state";
+import { Button } from "@/components/ui/button";
+import { ChevronDown, User } from "lucide-react";
 import type { NavigationMenuItem } from "@/lib/navigation-menu";
 import {
   DropdownMenu,
@@ -12,17 +16,14 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { ChevronDown } from "lucide-react";
 
 export function HeaderClient({
-  children,
   menuItems,
-  isSignedIn = false,
 }: {
-  children?: React.ReactNode;
   menuItems: NavigationMenuItem[];
-  isSignedIn?: boolean;
 }) {
+  const { user } = useAuthState();
+
   const childItems = menuItems.filter((item) => item.parent_id);
   const topLevelItems = menuItems.filter((item) => !item.parent_id);
   const getChildren = (item: NavigationMenuItem) =>
@@ -33,7 +34,7 @@ export function HeaderClient({
       <div className="border-b border-border/70">
         <div className="mx-auto grid h-[70px] max-w-[1728px] grid-cols-[1fr_auto_1fr] items-center px-5 sm:px-8 lg:px-12">
           <div className="flex items-center justify-start">
-            <MobileNav menuItems={menuItems} isSignedIn={isSignedIn} />
+            <MobileNav menuItems={menuItems} isSignedIn={!!user} />
             <div className="lg:hidden">
               <SearchDialog />
             </div>
@@ -53,7 +54,24 @@ export function HeaderClient({
           </div>
 
           <div className="flex items-center justify-end gap-1.5 text-foreground/80">
-            {children}
+            {user ? (
+              <UserMenuClient
+                fullName={user.fullName}
+                email={user.email}
+                initials={user.initials}
+                isAdmin={user.isAdmin}
+              />
+            ) : (
+              <Link href="/login" aria-label="Sign in">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="text-foreground/70 hover:text-foreground"
+                >
+                  <User className="h-5 w-5" />
+                </Button>
+              </Link>
+            )}
             <CartButton />
           </div>
         </div>

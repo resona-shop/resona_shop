@@ -1,7 +1,15 @@
-"use client";
-
 import Link from "next/link";
+import type { Metadata } from "next";
 import { Button } from "@/components/ui/button";
+
+// Rendered by notFound() inside a route segment (e.g. a stale product slug),
+// so it needs its own title instead of inheriting the home page default.
+export const metadata: Metadata = {
+  title: "Page Not Found",
+  description:
+    "The page you are looking for does not exist or has been moved. Browse the Resona shop to find something you'll love.",
+  robots: { index: false, follow: true },
+};
 
 export default function NotFound() {
   return (

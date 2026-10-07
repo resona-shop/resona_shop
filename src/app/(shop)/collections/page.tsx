@@ -1,15 +1,20 @@
-import { getCollections } from "@/actions/products";
+import { getPublicCollections } from "@/actions/products";
 import Image from "next/image";
 import Link from "next/link";
 import { CollectionsPageHeader, CollectionsExploreLabel, CollectionsEmpty } from "@/components/product/page-headers";
 import type { Metadata } from "next";
 
+export const revalidate = 300;
+
 export const metadata: Metadata = {
   title: "Collections",
+  description:
+    "Explore Resona's curated collections of Southeast Asian casual wear — new arrivals, best sellers and seasonal edits, styled for effortless everyday dressing.",
+  alternates: { canonical: "/collections" },
 };
 
 export default async function CollectionsPage() {
-  const collections = await getCollections();
+  const collections = await getPublicCollections();
 
   return (
     <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8 lg:py-12">

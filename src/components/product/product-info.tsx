@@ -11,10 +11,9 @@ import { useShopT } from "@/lib/shop-i18n";
 
 interface ProductInfoProps {
   product: Product;
-  wishlisted?: boolean;
 }
 
-export function ProductInfo({ product, wishlisted = false }: ProductInfoProps) {
+export function ProductInfo({ product }: ProductInfoProps) {
   const variants = product.variants || [];
   const addItem = useCart((s) => s.addItem);
   const t = useShopT();
@@ -182,7 +181,7 @@ export function ProductInfo({ product, wishlisted = false }: ProductInfoProps) {
           )}
         </Button>
 
-        <WishlistButton productId={product.id} initialWishlisted={wishlisted} />
+        <WishlistButton productId={product.id} />
       </div>
 
       {selectedVariant && inStock && selectedVariant.stock_quantity <= 5 && (

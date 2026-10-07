@@ -1,17 +1,8 @@
-import { UserMenu } from "@/components/auth/user-menu";
 import { HeaderClient } from "@/components/layout/header-client";
-import { getNavigationMenuItems } from "@/lib/navigation-menu";
-import { getCurrentUser } from "@/lib/auth";
+import { getPublicNavigationMenuItems } from "@/lib/navigation-menu";
 
 export async function Header() {
-  const [menuItems, user] = await Promise.all([
-    getNavigationMenuItems(),
-    getCurrentUser(),
-  ]);
+  const menuItems = await getPublicNavigationMenuItems();
 
-  return (
-    <HeaderClient menuItems={menuItems} isSignedIn={!!user}>
-      <UserMenu />
-    </HeaderClient>
-  );
+  return <HeaderClient menuItems={menuItems} />;
 }

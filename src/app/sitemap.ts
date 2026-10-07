@@ -5,20 +5,20 @@ import { siteConfig } from "@/lib/constants";
 // Rebuilt at most once an hour.
 export const revalidate = 3600;
 
-const staticPaths = [
-  "",
-  "/products",
-  "/collections",
-  "/about",
-  "/story",
-  "/sustainability",
-  "/careers",
-  "/faq",
-  "/contact",
-  "/shipping",
-  "/size-guide",
-  "/privacy",
-  "/terms",
+const staticPaths: Array<{ path: string; priority: number }> = [
+  { path: "", priority: 1 },
+  { path: "/products", priority: 0.8 },
+  { path: "/collections", priority: 0.8 },
+  { path: "/about", priority: 0.7 },
+  { path: "/story", priority: 0.7 },
+  { path: "/sustainability", priority: 0.7 },
+  { path: "/faq", priority: 0.6 },
+  { path: "/contact", priority: 0.6 },
+  { path: "/shipping", priority: 0.6 },
+  { path: "/size-guide", priority: 0.6 },
+  { path: "/careers", priority: 0.5 },
+  { path: "/privacy", priority: 0.3 },
+  { path: "/terms", priority: 0.3 },
 ];
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
@@ -39,10 +39,10 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   }
 
   return [
-    ...staticPaths.map((path) => ({
+    ...staticPaths.map(({ path, priority }) => ({
       url: `${siteConfig.url}${path}`,
       changeFrequency: "weekly" as const,
-      priority: path === "" ? 1 : 0.5,
+      priority,
     })),
     ...products.map((product) => ({
       url: `${siteConfig.url}/products/${product.slug}`,

@@ -6,11 +6,49 @@ import { ProductsPagination } from "@/components/product/products-pagination";
 import { Suspense } from "react";
 import type { Metadata } from "next";
 
-export const metadata: Metadata = {
-  title: "Shop All",
-};
-
 const PER_PAGE = 24;
+
+function titleCase(slug: string) {
+  return slug
+    .split("-")
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(" ");
+}
+
+// Canonical contract for /products:
+// - category and page facets carry distinct content and are indexable.
+// - sort is interaction state and is stripped from the canonical URL.
+// - site search (?q=) is interaction state and is excluded from indexing.
+export async function generateMetadata({
+  searchParams,
+}: {
+  searchParams: Promise<{ [key: string]: string | undefined }>;
+}): Promise<Metadata> {
+  const params = await searchParams;
+  const { category, q, page } = params;
+
+  if (q) {
+    return {
+      title: "Search",
+      robots: { index: false, follow: true },
+    };
+  }
+
+  const canonical = new URLSearchParams();
+  if (category) canonical.set("category", category);
+  if (page && page !== "1") canonical.set("page", page);
+  const qs = canonical.toString();
+
+  const label = category ? titleCase(category) : null;
+
+  return {
+    title: label ? `${label} — Shop All` : "Shop All",
+    description: label
+      ? `Shop ${label.toLowerCase()} from Resona — Southeast Asian casual wear in breathable warm-weather fabrics, made for effortless everyday dressing.`
+      : "Shop all Resona pieces — dresses, tops and bottoms in breathable warm-weather fabrics, designed in Southeast Asia for the confident, effortless woman.",
+    alternates: { canonical: `/products${qs ? `?${qs}` : ""}` },
+  };
+}
 
 export default async function ProductsPage({
   searchParams,
@@ -46,8 +84,23 @@ export default async function ProductsPage({
     return `/products${qs ? `?${qs}` : ""}`;
   }
 
+  // Matches the canonical URL contract (category + page only, no sort/search).
+  function canonicalPageHref(target: number) {
+    const query = new URLSearchParams();
+    if (category) query.set("category", category);
+    if (target > 1) query.set("page", String(target));
+    const qs = query.toString();
+    return `/products${qs ? `?${qs}` : ""}`;
+  }
+
   return (
     <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8 lg:py-12">
+      {totalPages > 1 && (
+        <>
+          {page > 1 && <link rel="prev" href={canonicalPageHref(page - 1)} />}
+          {page < totalPages && <link rel="next" href={canonicalPageHref(page + 1)} />}
+        </>
+      )}
       <ProductsPageHeader search={search} />
 
       <div className="flex flex-wrap items-center gap-3 mb-8 pb-4 border-b border-border">

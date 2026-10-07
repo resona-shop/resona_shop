@@ -1,10 +1,10 @@
 import Link from "next/link";
 import Image from "next/image";
-import { getCollections } from "@/actions/products";
+import { getPublicCollections } from "@/actions/products";
 import { CollectionHeader, CollectionShopNow } from "./section-headers";
 
 export async function CollectionShowcase() {
-  const collections = await getCollections();
+  const collections = await getPublicCollections();
   const display = collections.slice(0, 4);
 
   if (display.length === 0) return null;

@@ -17,6 +17,35 @@ const playfair = Playfair_Display({
   display: "swap",
 });
 
+const siteUrl = siteConfig.url.replace(/\/$/, "");
+
+const organizationJsonLd = {
+  "@context": "https://schema.org",
+  "@type": "Organization",
+  name: siteConfig.name,
+  url: siteUrl,
+  slogan: siteConfig.slogan,
+  description: siteConfig.description,
+  logo: `${siteUrl}/resona-logo.png`,
+  sameAs: [],
+};
+
+const websiteJsonLd = {
+  "@context": "https://schema.org",
+  "@type": "WebSite",
+  name: siteConfig.name,
+  url: siteUrl,
+  inLanguage: "en",
+  potentialAction: {
+    "@type": "SearchAction",
+    target: {
+      "@type": "EntryPoint",
+      urlTemplate: `${siteUrl}/products?q={search_term_string}`,
+    },
+    "query-input": "required name=search_term_string",
+  },
+};
+
 export const metadata: Metadata = {
   metadataBase: new URL(siteConfig.url),
   openGraph: {
@@ -24,7 +53,6 @@ export const metadata: Metadata = {
     siteName: siteConfig.name,
     title: "Resona — Ease That Resonates",
     description: siteConfig.description,
-    images: ["/resona-logo.png"],
   },
   twitter: { card: "summary_large_image" },
   title: {
@@ -53,6 +81,18 @@ export default function RootLayout({
       className={`${inter.variable} ${playfair.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col font-sans">
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify(organizationJsonLd).replace(/</g, "\\u003c"),
+          }}
+        />
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify(websiteJsonLd).replace(/</g, "\\u003c"),
+          }}
+        />
         <TooltipProvider>
           {children}
           <Toaster position="bottom-right" />

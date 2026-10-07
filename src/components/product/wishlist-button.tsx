@@ -1,18 +1,28 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Heart } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-export function WishlistButton({
-  productId,
-  initialWishlisted,
-}: {
-  productId: string;
-  initialWishlisted: boolean;
-}) {
-  const [wishlisted, setWishlisted] = useState(initialWishlisted);
+export function WishlistButton({ productId }: { productId: string }) {
+  const [wishlisted, setWishlisted] = useState(false);
   const [loading, setLoading] = useState(false);
+
+  // Resolved on the client so product pages can be prerendered.
+  useEffect(() => {
+    let cancelled = false;
+    fetch(`/api/wishlist?product_id=${encodeURIComponent(productId)}`)
+      .then((res) => res.json())
+      .then((data) => {
+        if (!cancelled && typeof data.wishlisted === "boolean") {
+          setWishlisted(data.wishlisted);
+        }
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [productId]);
 
   async function handleToggle() {
     setLoading(true);

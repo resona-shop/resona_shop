@@ -1,7 +1,33 @@
 "use server";
 
-import { createClient } from "@/lib/supabase/server";
+import { createClient, createPublicClient } from "@/lib/supabase/server";
 import type { Product } from "@/types";
+
+export async function getActiveProductSlugs() {
+  try {
+    const supabase = createPublicClient();
+    const { data } = await supabase
+      .from("products")
+      .select("slug")
+      .eq("is_active", true);
+    return (data || []).map((p) => p.slug as string);
+  } catch {
+    return [];
+  }
+}
+
+export async function getActiveCollectionSlugs() {
+  try {
+    const supabase = createPublicClient();
+    const { data } = await supabase
+      .from("collections")
+      .select("slug")
+      .eq("is_active", true);
+    return (data || []).map((c) => c.slug as string);
+  } catch {
+    return [];
+  }
+}
 
 export async function getProducts(options?: {
   category?: string;
@@ -12,7 +38,7 @@ export async function getProducts(options?: {
   limit?: number;
   offset?: number;
 }) {
-  const supabase = await createClient();
+  const supabase = createPublicClient();
   let query = supabase
     .from("products")
     .select(
@@ -78,7 +104,7 @@ export async function getProducts(options?: {
 }
 
 export async function getProductBySlug(slug: string) {
-  const supabase = await createClient();
+  const supabase = createPublicClient();
 
   const { data, error } = await supabase
     .from("products")
@@ -97,7 +123,7 @@ export async function getProductBySlug(slug: string) {
 }
 
 export async function getCategories() {
-  const supabase = await createClient();
+  const supabase = createPublicClient();
   const { data } = await supabase
     .from("categories")
     .select("*")
@@ -115,8 +141,19 @@ export async function getCollections() {
   return data || [];
 }
 
+// Storefront collections listing. Cookie-less read so the page can prerender.
+export async function getPublicCollections() {
+  const supabase = createPublicClient();
+  const { data } = await supabase
+    .from("collections")
+    .select("*")
+    .eq("is_active", true)
+    .order("sort_order");
+  return data || [];
+}
+
 export async function getCollectionBySlug(slug: string) {
-  const supabase = await createClient();
+  const supabase = createPublicClient();
 
   const { data: collection } = await supabase
     .from("collections")

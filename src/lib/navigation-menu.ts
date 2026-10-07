@@ -1,4 +1,4 @@
-import { createClient } from "@/lib/supabase/server";
+import { createClient, createPublicClient } from "@/lib/supabase/server";
 
 export interface NavigationMenuItem {
   id?: string;
@@ -36,6 +36,23 @@ export const staticStorefrontLinks = [
   { label: "Shipping", href: "/shipping" },
   { label: "Size Guide", href: "/size-guide" },
 ];
+
+// Storefront header menu. Reads without cookies so shop routes can prerender;
+// the admin editor keeps the request-scoped client to also see inactive items.
+export async function getPublicNavigationMenuItems() {
+  const supabase = createPublicClient();
+  const { data, error } = await supabase
+    .from("navigation_menu_items")
+    .select("id, label, href, has_menu, is_active, sort_order, parent_id")
+    .eq("is_active", true)
+    .order("sort_order", { ascending: true });
+
+  if (error || !data || data.length === 0) {
+    return defaultNavigationMenuItems;
+  }
+
+  return data as NavigationMenuItem[];
+}
 
 export async function getNavigationMenuItems(options?: {
   includeInactive?: boolean;

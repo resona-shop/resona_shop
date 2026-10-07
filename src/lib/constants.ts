@@ -1,3 +1,13 @@
+const siteUrl = process.env.NEXT_PUBLIC_SITE_URL;
+
+if (process.env.NODE_ENV === "production" && !siteUrl) {
+  console.warn(
+    "[SEO] NEXT_PUBLIC_SITE_URL is not set in production. Canonical URLs, " +
+      "the sitemap and Open Graph URLs will fall back to http://localhost:3000. " +
+      "Set NEXT_PUBLIC_SITE_URL to your production domain before deploying."
+  );
+}
+
 export const siteConfig = {
   name: "Resona",
   description:
@@ -8,7 +18,7 @@ export const siteConfig = {
     "Where Confidence Echoes",
     "Effortless Resonance",
   ],
-  url: process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000",
+  url: siteUrl || "http://localhost:3000",
   currency: "USD",
   locale: "en-US",
 } as const;

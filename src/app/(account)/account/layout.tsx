@@ -2,6 +2,13 @@ import { AnnouncementBar } from "@/components/layout/announcement-bar";
 import { Header } from "@/components/layout/header";
 import { Footer } from "@/components/layout/footer";
 import { AccountNav } from "@/components/auth/account-nav";
+import type { Metadata } from "next";
+
+// Account pages are per-user. robots.txt only stops crawling; noindex stops
+// indexing of URLs that are already known.
+export const metadata: Metadata = {
+  robots: { index: false, follow: false },
+};
 
 export default function AccountLayout({
   children,

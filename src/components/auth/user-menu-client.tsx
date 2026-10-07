@@ -1,5 +1,6 @@
 "use client";
 
+import { signOut } from "@/actions/auth";
 import { useShopT } from "@/lib/shop-i18n";
 import { User, Package, MapPin, Settings, LogOut, Heart, LayoutDashboard } from "lucide-react";
 import Link from "next/link";
@@ -16,10 +17,9 @@ interface UserMenuClientProps {
   email: string;
   initials: string;
   isAdmin?: boolean;
-  signOutAction: () => Promise<void>;
 }
 
-export function UserMenuClient({ fullName, email, initials, isAdmin, signOutAction }: UserMenuClientProps) {
+export function UserMenuClient({ fullName, email, initials, isAdmin }: UserMenuClientProps) {
   const t = useShopT();
 
   return (
@@ -64,7 +64,7 @@ export function UserMenuClient({ fullName, email, initials, isAdmin, signOutActi
           {t("user.settings")}
         </Link>
         <DropdownMenuSeparator />
-        <form action={signOutAction}>
+        <form action={signOut}>
           <button type="submit" className="flex items-center gap-1.5 rounded-md px-1.5 py-1 text-sm hover:bg-accent hover:text-accent-foreground cursor-pointer w-full">
             <LogOut className="h-4 w-4" />
             {t("user.signOut")}
